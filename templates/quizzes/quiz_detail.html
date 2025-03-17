@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ quiz.title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ quiz.title }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="quiz-info mb-4">
+                        <p>{{ quiz.description }}</p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-question-circle"></i> 问题数量: <strong>{{ quiz.questions.count }}</strong></li>
+                                    <li><i class="fas fa-award"></i> 及格分数: <strong>{{ quiz.passing_score }}%</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    {% if quiz.time_limit > 0 %}
+                                    <li><i class="fas fa-clock"></i> 时间限制: <strong>{{ quiz.time_limit }} 分钟</strong></li>
+                                    {% else %}
+                                    <li><i class="fas fa-clock"></i> 时间限制: <strong>无限制</strong></li>
+                                    {% endif %}
+                                    <li><i class="fas fa-calendar-alt"></i> 创建日期: <strong>{{ quiz.created_at|date:"Y-m-d" }}</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if is_enrolled %}
+                    <div class="quiz-actions">
+                        {% if attempts %}
+                        <div class="previous-attempts mb-4">
+                            <h5>您的测验记录</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>尝试时间</th>
+                                            <th>完成状态</th>
+                                            <th>得分</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for attempt in attempts %}
+                                        <tr>
+                                            <td>{{ attempt.started_at|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                {% if attempt.is_completed %}
+                                                <span class="badge bg-success">已完成</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">进行中</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if attempt.is_completed %}
+                                                {{ attempt.score|floatformat:1 }}%
+                                                {% else %}
+                                                -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if attempt.is_completed %}
+                                                <a href="{% url 'quizzes:quiz_results' quiz.id attempt.id %}" class="btn btn-sm btn-info">
+                                                    查看结果
+                                                </a>
+                                                {% else %}
+                                                <a href="{% url 'quizzes:quiz_attempt' quiz.id attempt.id %}" class="btn btn-sm btn-warning">
+                                                    继续测验
+                                                </a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="text-center">
+                            <a href="{% url 'quizzes:start_quiz' quiz.id %}" class="btn btn-lg btn-success">
+                                <i class="fas fa-play-circle"></i> 开始新测验
+                            </a>
+                        </div>
+                    </div>
+                    {% elif request.user == quiz.course.instructor %}
+                    <div class="instructor-actions">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'quizzes:question_list' quiz.id %}" class="btn btn-primary">
+                                <i class="fas fa-list"></i> 管理问题
+                            </a>
+                            <a href="{% url 'quizzes:quiz_update' quiz.id %}" class="btn btn-secondary">
+                                <i class="fas fa-edit"></i> 编辑测验
+                            </a>
+                            {% if not quiz.is_published %}
+                            <form method="post" action="{% url 'quizzes:publish_quiz' quiz.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-check-circle"></i> 发布测验
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        您需要先注册课程才能参加此测验。
+                        <a href="{% url 'courses:course_detail' quiz.course.slug %}" class="alert-link">返回课程页面</a>注册课程。
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

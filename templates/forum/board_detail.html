@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ board.course.title }} - Discussion Board{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' board.course.slug %}">{{ board.course.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Discussion Board</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>{{ board.course.title }} - Discussion Board</h2>
+            {% if board.description %}
+            <p class="text-muted">{{ board.description }}</p>
+            {% endif %}
+            <p class="text-muted">
+                <i class="fas fa-chalkboard-teacher"></i> Course Instructor: {{ board.course.instructor.username }}
+            </p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            {% if can_post %}
+            <a href="{% url 'forum:post_create' board.id %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Create New Post
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            {% if posts %}
+            <div class="card">
+                <div class="list-group list-group-flush">
+                    {% for post in posts %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">
+                                {% if post.is_pinned %}<i class="fas fa-thumbtack text-danger"></i>{% endif %}
+                                {% if post.is_announcement %}<span class="badge bg-primary me-2">Announcement</span>{% endif %}
+                                <a href="{% url 'forum:post_detail' board.id post.id %}">{{ post.title }}</a>
+                            </h5>
+                            <small>{{ post.created_at|date:"Y-m-d H:i" }}</small>
+                        </div>
+                        <p class="mb-1">{{ post.content|striptags|truncatechars:100 }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-user"></i> {{ post.author.username }}
+                                {% if post.author.user_type == 'teacher' %}
+                                <span class="badge bg-primary">Teacher</span>
+                                {% elif post.author.user_type == 'student' %}
+                                <span class="badge bg-secondary">Student</span>
+                                {% endif %}
+                                <i class="fas fa-comments ms-2"></i> {{ post.get_comment_count }} comments
+                                <i class="fas fa-eye ms-2"></i> {{ post.views }} views
+                            </small>
+                            <div>
+                                {% if request.user == post.author or request.user.is_staff %}
+                                <a href="{% url 'forum:post_update' board.id post.id %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'forum:post_delete' board.id post.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center">
+                    <p class="mb-3">No posts in this discussion board yet.</p>
+                    {% if can_post %}
+                    <a href="{% url 'forum:post_create' board.id %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Create the first post
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

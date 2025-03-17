@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Forum{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>Forum</h1>
+            <p class="lead">Participate in course discussions, exchange learning experiences with other students and teachers</p>
+        </div>
+    </div>
+
+    <div class="row">
+        {% if boards %}
+        <div class="col-12">
+            <div class="card">
+                <div class="list-group list-group-flush">
+                    {% for board in boards %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">
+                                <a href="{% url 'forum:board_detail' board.id %}">{{ board.course.title }} - Discussion Board</a>
+                            </h5>
+                            <small>{{ board.posts.count }} posts</small>
+                        </div>
+                        {% if board.description %}
+                        <p class="mb-1">{{ board.description }}</p>
+                        {% endif %}
+                        <small class="text-muted">
+                            <i class="fas fa-user"></i> Teacher: {{ board.course.instructor.username }}
+                            <i class="fas fa-users ms-2"></i> {{ board.course.students.count }} students
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No discussion boards available.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

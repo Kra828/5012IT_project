@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Online Learning Platform{% endblock %}
+
+{% block content %}
+    <!-- Welcome Banner -->
+    <div class="bg-primary text-white p-5 rounded-3 mb-4">
+        <div class="container">
+            <h1 class="display-4">Welcome to Online Learning Platform</h1>
+            <p class="lead">Explore rich course resources and begin your learning journey</p>
+            <hr class="my-4">
+            <p>We provide high-quality online courses to help you learn new knowledge and master new skills anytime, anywhere.</p>
+            <a class="btn btn-light btn-lg" href="{% url 'courses:course_list' %}" role="button">Browse Courses</a>
+            {% if not user.is_authenticated %}
+                <a class="btn btn-outline-light btn-lg ms-2" href="{% url 'account_signup' %}" role="button">Register Now</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Featured Content -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-laptop-code fa-3x text-primary mb-3"></i>
+                    <h3 class="card-title">Diverse Courses</h3>
+                    <p class="card-text">From programming to arts, from science to languages, we offer quality courses in various fields.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                    <h3 class="card-title">Interactive Learning</h3>
+                    <p class="card-text">Exchange ideas with other students and teachers through the forum, sharing knowledge and experience.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                    <h3 class="card-title">AI Learning Assistant</h3>
+                    <p class="card-text">Utilize artificial intelligence technology to get personalized learning suggestions and instant answers.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %} 

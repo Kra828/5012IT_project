@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ recommendation.title }} - 学习建议{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ recommendation.title }}</h1>
+            <p class="text-muted">创建于: {{ recommendation.created_at|date:"Y-m-d" }}</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'ai_assistant:recommendation_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧边栏 -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">功能导航</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-robot me-2"></i> AI助手
+                    </a>
+                    <a href="{% url 'ai_assistant:chat_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-history me-2"></i> 聊天记录
+                    </a>
+                    <a href="{% url 'ai_assistant:recommendation_list' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-lightbulb me-2"></i> 学习建议
+                    </a>
+                    <a href="{% url 'ai_assistant:progress_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-line me-2"></i> 学习进度
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="col-md-9">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">建议详情</h5>
+                </div>
+                <div class="card-body">
+                    <div class="recommendation-content">
+                        {{ recommendation.description|linebreaks }}
+                    </div>
+                </div>
+            </div>
+
+            {% if recommendation.recommended_courses.exists %}
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">推荐课程</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for course in recommendation.recommended_courses.all %}
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100">
+                                        {% if course.image %}
+                                            <img src="{{ course.image.url }}" class="card-img-top" alt="{{ course.title }}">
+                                        {% else %}
+                                            <div class="bg-light text-center py-5">
+                                                <i class="fas fa-book fa-3x text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ course.title }}</h5>
+                                            <p class="card-text">{{ course.description|truncatechars:100 }}</p>
+                                            <a href="{% url 'courses:detail' course.id %}" class="btn btn-primary">查看课程</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

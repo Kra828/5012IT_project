@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ attempt.quiz.title }} - 测验结果{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}">{{ attempt.quiz.course.title }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}">{{ attempt.quiz.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">测验结果</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ attempt.quiz.title }} - 测验结果</h4>
+                </div>
+                <div class="card-body">
+                    <div class="result-summary text-center mb-4">
+                        <div class="score-display">
+                            <h1 class="display-1 {% if passed %}text-success{% else %}text-danger{% endif %}">
+                                {{ attempt.score|floatformat:1 }}%
+                            </h1>
+                            <p class="lead">
+                                {% if passed %}
+                                <span class="badge bg-success">通过</span>
+                                {% else %}
+                                <span class="badge bg-danger">未通过</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="stats mt-3">
+                            <p>正确答案: <strong>{{ correct_answers }}/{{ total_questions }}</strong></p>
+                            <p>完成时间: <strong>{{ attempt.completed_at|date:"Y-m-d H:i:s" }}</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mb-4">
+                        <a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> 返回测验详情
+                        </a>
+                        <a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-book"></i> 返回课程
+                        </a>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3">答案详情</h5>
+                    {% for answer in answers %}
+                    <div class="answer-container mb-4 p-3 border rounded {% if answer.is_correct %}border-success{% else %}border-danger{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">问题 {{ forloop.counter }}</h6>
+                            <div>
+                                {% if answer.is_correct %}
+                                <span class="badge bg-success">正确</span>
+                                {% else %}
+                                <span class="badge bg-danger">错误</span>
+                                {% endif %}
+                                <span class="badge bg-secondary ms-1">{{ answer.earned_points|floatformat:1 }}/{{ answer.question.points }} 分</span>
+                            </div>
+                        </div>
+                        
+                        <div class="question-text mb-3">
+                            {{ answer.question.question_text|safe }}
+                        </div>
+                        
+                        {% if answer.question.question_type == 'multiple_choice' %}
+                        <div class="choices">
+                            <p class="mb-2"><strong>您的选择:</strong></p>
+                            <ul class="list-group">
+                                {% for choice in answer.question.choices.all %}
+                                <li class="list-group-item {% if choice in answer.selected_choices.all and choice.is_correct %}list-group-item-success{% elif choice in answer.selected_choices.all and not choice.is_correct %}list-group-item-danger{% elif choice.is_correct %}list-group-item-success{% endif %}">
+                                    {{ choice.choice_text }}
+                                    {% if choice in answer.selected_choices.all and choice.is_correct %}
+                                    <i class="fas fa-check text-success float-end"></i>
+                                    {% elif choice in answer.selected_choices.all and not choice.is_correct %}
+                                    <i class="fas fa-times text-danger float-end"></i>
+                                    {% elif choice.is_correct %}
+                                    <i class="fas fa-check text-success float-end"></i>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% elif answer.question.question_type == 'true_false' %}
+                        <div class="true-false">
+                            <p><strong>您的答案:</strong> {{ answer.text_answer }}</p>
+                            <p><strong>正确答案:</strong> {% if answer.is_correct %}{{ answer.text_answer }}{% else %}{% if answer.text_answer == 'true' %}false{% else %}true{% endif %}{% endif %}</p>
+                        </div>
+                        {% elif answer.question.question_type == 'fill_blank' or answer.question.question_type == 'essay' %}
+                        <div class="text-answer">
+                            <p><strong>您的答案:</strong></p>
+                            <div class="p-2 bg-light rounded">
+                                {{ answer.text_answer|linebreaks }}
+                            </div>
+                            {% if not answer.is_correct %}
+                            <p class="mt-2"><strong>参考答案:</strong></p>
+                            <div class="p-2 bg-light rounded">
+                                <!-- 这里可以添加参考答案，如果有的话 -->
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

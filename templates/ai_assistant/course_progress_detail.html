@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ progress.course.title }} - 学习进度{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ progress.course.title }}</h1>
+            <p class="lead">学习进度详情</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'ai_assistant:progress_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧边栏 -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">功能导航</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-robot me-2"></i> AI助手
+                    </a>
+                    <a href="{% url 'ai_assistant:chat_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-history me-2"></i> 聊天记录
+                    </a>
+                    <a href="{% url 'ai_assistant:recommendation_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-lightbulb me-2"></i> 学习建议
+                    </a>
+                    <a href="{% url 'ai_assistant:progress_list' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-chart-line me-2"></i> 学习进度
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="col-md-9">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">总体进度</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar {% if progress.progress_percentage >= 100 %}bg-success{% elif progress.progress_percentage >= 50 %}bg-info{% else %}bg-primary{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ progress.progress_percentage }}%" 
+                             aria-valuenow="{{ progress.progress_percentage }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ progress.progress_percentage }}%
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">最后活动时间</h5>
+                                    <p class="card-text">{{ progress.last_activity|date:"Y-m-d H:i" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">预计完成时间</h5>
+                                    <p class="card-text">
+                                        {% if progress.progress_percentage < 100 %}
+                                            {{ progress.estimated_completion|date:"Y-m-d" }}
+                                        {% else %}
+                                            <span class="badge bg-success">已完成</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">课程详情</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            {% if progress.course.image %}
+                                <img src="{{ progress.course.image.url }}" class="img-fluid rounded" alt="{{ progress.course.title }}">
+                            {% else %}
+                                <div class="bg-light text-center py-5 rounded">
+                                    <i class="fas fa-book fa-3x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <h4>{{ progress.course.title }}</h4>
+                            <p>{{ progress.course.description }}</p>
+                            <a href="{% url 'courses:detail' progress.course.id %}" class="btn btn-primary">
+                                <i class="fas fa-book-open me-2"></i> 继续学习
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">AI学习建议</h5>
+                </div>
+                <div class="card-body">
+                    <div id="learning-tips">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取AI学习建议
+        fetch('{% url "ai_assistant:ai_query_api" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                query: '请针对{{ progress.course.title }}课程，给我一些学习建议和提高效率的方法。我目前的学习进度是{{ progress.progress_percentage }}%。'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const tipsContainer = document.getElementById('learning-tips');
+            tipsContainer.innerHTML = `<div class="alert alert-info">${data.response.replace(/\n/g, '<br>')}</div>`;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const tipsContainer = document.getElementById('learning-tips');
+            tipsContainer.innerHTML = '<div class="alert alert-danger">获取学习建议时出错，请稍后再试。</div>';
+        });
+    });
+</script>
+{% endblock %} 

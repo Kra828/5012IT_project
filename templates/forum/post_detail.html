@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' post.board.course.slug %}">{{ post.board.course.title }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'forum:board_detail' post.board.id %}">讨论区</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ post.title }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <!-- 帖子内容 -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        {% if post.is_pinned %}<i class="fas fa-thumbtack text-danger"></i>{% endif %}
+                        {% if post.is_announcement %}<span class="badge bg-primary me-2">公告</span>{% endif %}
+                        {{ post.title }}
+                    </h4>
+                    <div>
+                        {% if request.user == post.author or request.user.is_staff %}
+                        <a href="{% url 'forum:post_update' post.board.id post.id %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i> 编辑
+                        </a>
+                        <a href="{% url 'forum:post_delete' post.board.id post.id %}" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-trash"></i> 删除
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <span class="text-muted">
+                                <i class="fas fa-user"></i> {{ post.author.username }}
+                                {% if post.author.user_type == 'teacher' %}
+                                <span class="badge bg-primary">教师</span>
+                                {% elif post.author.user_type == 'student' %}
+                                <span class="badge bg-secondary">学生</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-muted">
+                                <i class="fas fa-calendar"></i> {{ post.created_at|date:"Y-m-d H:i" }}
+                                {% if post.updated_at != post.created_at %}
+                                <i class="fas fa-edit ms-2"></i> {{ post.updated_at|date:"Y-m-d H:i" }} 更新
+                                {% endif %}
+                                <i class="fas fa-eye ms-2"></i> {{ post.views }} 次浏览
+                            </span>
+                        </div>
+                    </div>
+                    <div class="post-content">
+                        {{ post.content|safe }}
+                    </div>
+                    <div class="mt-3 text-end">
+                        <form method="post" action="{% url 'forum:like_post' post.board.id post.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-thumbs-up"></i> 点赞 ({{ post.likes.count }})
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 评论区 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">评论 ({{ comments|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if comments %}
+                    <div class="comments">
+                        {% for comment in comments %}
+                        {% if not comment.parent %}
+                        <div class="comment mb-4" id="comment-{{ comment.id }}">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    {% if comment.author.profile_picture %}
+                                    <img src="{{ comment.author.profile_picture.url }}" alt="{{ comment.author.username }}" class="rounded-circle" width="50" height="50">
+                                    {% else %}
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        {{ comment.author.username|first|upper }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="mb-0">
+                                            {{ comment.author.username }}
+                                            {% if comment.author.user_type == 'teacher' %}
+                                            <span class="badge bg-primary">教师</span>
+                                            {% elif comment.author.user_type == 'student' %}
+                                            <span class="badge bg-secondary">学生</span>
+                                            {% endif %}
+                                        </h6>
+                                        <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                                    </div>
+                                    <div class="comment-content">
+                                        {{ comment.content|safe }}
+                                    </div>
+                                    <div class="mt-2 d-flex justify-content-between">
+                                        <div>
+                                            {% if can_comment %}
+                                            <button class="btn btn-sm btn-link p-0 reply-btn" data-comment-id="{{ comment.id }}">
+                                                <i class="fas fa-reply"></i> 回复
+                                            </button>
+                                            {% endif %}
+                                            {% if request.user == comment.author or request.user.is_staff %}
+                                            <a href="{% url 'forum:comment_update' post.board.id post.id comment.id %}" class="btn btn-sm btn-link text-secondary p-0 ms-2">
+                                                <i class="fas fa-edit"></i> 编辑
+                                            </a>
+                                            <a href="{% url 'forum:comment_delete' post.board.id post.id comment.id %}" class="btn btn-sm btn-link text-danger p-0 ms-2">
+                                                <i class="fas fa-trash"></i> 删除
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                        <form method="post" action="{% url 'forum:like_comment' post.board.id post.id comment.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-link text-primary p-0">
+                                                <i class="fas fa-thumbs-up"></i> {{ comment.likes.count }}
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- 回复表单 -->
+                                    <div class="reply-form mt-3 d-none" id="reply-form-{{ comment.id }}">
+                                        <form method="post" action="{% url 'forum:reply_create' post.board.id post.id comment.id %}">
+                                            {% csrf_token %}
+                                            <div class="mb-3">
+                                                <textarea name="content" class="form-control" rows="3" placeholder="写下你的回复..."></textarea>
+                                            </div>
+                                            <div class="text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary cancel-reply" data-comment-id="{{ comment.id }}">取消</button>
+                                                <button type="submit" class="btn btn-sm btn-primary ms-2">提交回复</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- 回复列表 -->
+                                    {% if comment.replies.exists %}
+                                    <div class="replies mt-3">
+                                        {% for reply in comment.replies.all %}
+                                        <div class="reply mt-3" id="comment-{{ reply.id }}">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0">
+                                                    {% if reply.author.profile_picture %}
+                                                    <img src="{{ reply.author.profile_picture.url }}" alt="{{ reply.author.username }}" class="rounded-circle" width="40" height="40">
+                                                    {% else %}
+                                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                        {{ reply.author.username|first|upper }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <div class="d-flex justify-content-between">
+                                                        <h6 class="mb-0">
+                                                            {{ reply.author.username }}
+                                                            {% if reply.author.user_type == 'teacher' %}
+                                                            <span class="badge bg-primary">教师</span>
+                                                            {% elif reply.author.user_type == 'student' %}
+                                                            <span class="badge bg-secondary">学生</span>
+                                                            {% endif %}
+                                                        </h6>
+                                                        <small class="text-muted">{{ reply.created_at|date:"Y-m-d H:i" }}</small>
+                                                    </div>
+                                                    <div class="reply-content">
+                                                        {{ reply.content|safe }}
+                                                    </div>
+                                                    <div class="mt-2 d-flex justify-content-between">
+                                                        <div>
+                                                            {% if request.user == reply.author or request.user.is_staff %}
+                                                            <a href="{% url 'forum:comment_update' post.board.id post.id reply.id %}" class="btn btn-sm btn-link text-secondary p-0">
+                                                                <i class="fas fa-edit"></i> 编辑
+                                                            </a>
+                                                            <a href="{% url 'forum:comment_delete' post.board.id post.id reply.id %}" class="btn btn-sm btn-link text-danger p-0 ms-2">
+                                                                <i class="fas fa-trash"></i> 删除
+                                                            </a>
+                                                            {% endif %}
+                                                        </div>
+                                                        <form method="post" action="{% url 'forum:like_comment' post.board.id post.id reply.id %}" class="d-inline">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-link text-primary p-0">
+                                                                <i class="fas fa-thumbs-up"></i> {{ reply.likes.count }}
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted">暂无评论，成为第一个评论的人吧！</p>
+                    {% endif %}
+
+                    <!-- 发表评论 -->
+                    {% if can_comment %}
+                    <div class="mt-4">
+                        <h5 class="mb-3">发表评论</h5>
+                        <form method="post" action="{% url 'forum:comment_create' post.board.id post.id %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <textarea name="content" class="form-control" rows="4" placeholder="写下你的评论..."></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">提交评论</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 回复功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 显示回复表单
+        document.querySelectorAll('.reply-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                document.getElementById(`reply-form-${commentId}`).classList.remove('d-none');
+            });
+        });
+        
+        // 取消回复
+        document.querySelectorAll('.cancel-reply').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const commentId = this.getAttribute('data-comment-id');
+                document.getElementById(`reply-form-${commentId}`).classList.add('d-none');
+            });
+        });
+    });
+</script>
+{% endblock %} 

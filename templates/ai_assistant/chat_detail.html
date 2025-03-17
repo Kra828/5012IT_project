@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+
+{% block title %}聊天详情 - AI助手{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+    .message {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        max-width: 80%;
+    }
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: auto;
+    }
+    .assistant-message {
+        background-color: #e9ecef;
+        color: #212529;
+    }
+    .typing-indicator {
+        display: none;
+        padding: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 0.5rem;
+        width: fit-content;
+    }
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #666;
+        border-radius: 50%;
+        margin-right: 3px;
+        animation: typing 1s infinite;
+    }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ chat.title }}</h1>
+            <p class="lead">与AI助手的对话</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'ai_assistant:chat_list' %}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fas fa-trash"></i> 删除对话
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧边栏 -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">功能导航</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-robot me-2"></i> AI助手
+                    </a>
+                    <a href="{% url 'ai_assistant:chat_list' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-history me-2"></i> 聊天记录
+                    </a>
+                    <a href="{% url 'ai_assistant:recommendation_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-lightbulb me-2"></i> 学习建议
+                    </a>
+                    <a href="{% url 'ai_assistant:progress_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-line me-2"></i> 学习进度
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">对话内容</h5>
+                    <small class="text-muted">创建于: {{ chat.created_at|date:"Y-m-d H:i" }}</small>
+                </div>
+                <div class="card-body">
+                    <!-- 聊天区域 -->
+                    <div id="chat-container" class="chat-container mb-3">
+                        {% for message in chat.get_messages %}
+                            <div class="message {% if message.role == 'user' %}user-message{% else %}assistant-message{% endif %}">
+                                <p class="mb-0">{{ message.content|linebreaksbr }}</p>
+                                <small class="text-muted d-block mt-1 text-end">
+                                    {{ message.created_at|date:"H:i" }}
+                                </small>
+                            </div>
+                        {% empty %}
+                            <div class="alert alert-info">
+                                <p class="mb-0">这个对话还没有任何消息。</p>
+                            </div>
+                        {% endfor %}
+                        <div id="typing-indicator" class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <!-- 输入区域 -->
+                    <form id="chat-form">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="输入您的问题..." required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> 发送
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除这个对话吗？此操作无法撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form action="{% url 'ai_assistant:chat_delete' chat.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        // 页面加载时滚动到底部
+        scrollToBottom();
+        
+        // 发送消息
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+            
+            // 添加用户消息到聊天区域
+            addMessage(userMessage, 'user');
+            
+            // 清空输入框
+            userInput.value = '';
+            
+            // 显示输入指示器
+            typingIndicator.style.display = 'block';
+            
+            // 滚动到底部
+            scrollToBottom();
+            
+            // 发送请求到后端
+            fetch('{% url "ai_assistant:send_message" chat.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    content: userMessage
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `服务器返回错误状态码: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 隐藏输入指示器
+                typingIndicator.style.display = 'none';
+                
+                // 添加AI回复到聊天区域
+                addMessage(data.response, 'assistant');
+                
+                // 滚动到底部
+                scrollToBottom();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                typingIndicator.style.display = 'none';
+                
+                // 显示友好的错误消息
+                let errorMessage = '抱歉，发生了错误。请稍后再试。';
+                if (error.message) {
+                    errorMessage = `抱歉，${error.message}`;
+                }
+                
+                addMessage(errorMessage, 'assistant', true);
+                scrollToBottom();
+            });
+        });
+        
+        // 添加消息到聊天区域
+        function addMessage(content, sender, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('assistant-message');
+                if (isError) {
+                    messageDiv.classList.add('error-message');
+                    messageDiv.style.backgroundColor = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.borderColor = '#f5c6cb';
+                }
+            }
+            
+            // 处理换行
+            const formattedContent = content.replace(/\n/g, '<br>');
+            
+            // 获取当前时间
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            
+            messageDiv.innerHTML = `
+                <p class="mb-0">${formattedContent}</p>
+                <small class="text-muted d-block mt-1 text-end">${hours}:${minutes}</small>
+            `;
+            
+            // 将消息插入到输入指示器之前
+            chatContainer.insertBefore(messageDiv, typingIndicator);
+        }
+        
+        // 滚动到底部
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+</script>
+{% endblock %} 

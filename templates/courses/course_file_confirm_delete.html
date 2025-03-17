@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}删除文件确认{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">确认删除</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">您确定要删除文件 <strong>{{ object.title }}</strong> 吗？</p>
+                    <p class="text-danger">此操作不可逆，删除后将无法恢复。</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> 确认删除
+                            </button>
+                            <a href="{% url 'courses:course_files' object.course.slug %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

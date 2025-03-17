@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}学习进度 - AI助手{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>学习进度</h1>
+            <p class="lead">查看您的课程学习进度和预计完成时间。</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左侧边栏 -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">功能导航</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-robot me-2"></i> AI助手
+                    </a>
+                    <a href="{% url 'ai_assistant:chat_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-history me-2"></i> 聊天记录
+                    </a>
+                    <a href="{% url 'ai_assistant:recommendation_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-lightbulb me-2"></i> 学习建议
+                    </a>
+                    <a href="{% url 'ai_assistant:progress_list' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-chart-line me-2"></i> 学习进度
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">课程学习进度</h5>
+                </div>
+                <div class="card-body">
+                    {% if progress_list %}
+                        <div class="list-group">
+                            {% for progress in progress_list %}
+                                <a href="{% url 'ai_assistant:course_progress_detail' progress.course.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ progress.course.title }}</h5>
+                                        <small>最后活动: {{ progress.last_activity|date:"Y-m-d" }}</small>
+                                    </div>
+                                    <div class="progress mt-2 mb-2">
+                                        <div class="progress-bar {% if progress.progress_percentage >= 100 %}bg-success{% elif progress.progress_percentage >= 50 %}bg-info{% else %}bg-primary{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ progress.progress_percentage }}%" 
+                                             aria-valuenow="{{ progress.progress_percentage }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                            {{ progress.progress_percentage }}%
+                                        </div>
+                                    </div>
+                                    <small>
+                                        {% if progress.progress_percentage < 100 %}
+                                            <span class="text-muted">预计完成时间: {{ progress.estimated_completion|date:"Y-m-d" }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">已完成</span>
+                                        {% endif %}
+                                    </small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <p class="mb-0">您尚未开始任何课程的学习。</p>
+                            <a href="{% url 'courses:list' %}" class="btn btn-primary mt-3">浏览课程</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

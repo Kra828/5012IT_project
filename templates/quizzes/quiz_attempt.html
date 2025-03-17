@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ attempt.quiz.title }} - 测验{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}">{{ attempt.quiz.course.title }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}">{{ attempt.quiz.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">测验</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ attempt.quiz.title }}</h4>
+                    {% if attempt.quiz.time_limit > 0 %}
+                    <div id="timer" class="bg-light text-dark px-3 py-1 rounded">
+                        <i class="fas fa-clock"></i> <span id="time-remaining">{{ attempt.quiz.time_limit }}:00</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'quizzes:submit_quiz' attempt.quiz.id attempt.id %}" id="quiz-form">
+                        {% csrf_token %}
+                        
+                        {% for question in questions %}
+                        <div class="question-container mb-4 p-3 border rounded {% if forloop.counter > 1 %}mt-5{% endif %}">
+                            <h5 class="question-number">问题 {{ forloop.counter }}/{{ questions|length }}</h5>
+                            <div class="question-text mb-3">
+                                {{ question.question_text|safe }}
+                            </div>
+                            
+                            {% if question.question_type == 'multiple_choice' %}
+                            <div class="choices">
+                                {% for choice in question.choices.all %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="question_{{ question.id }}" value="{{ choice.id }}" id="choice_{{ choice.id }}">
+                                    <label class="form-check-label" for="choice_{{ choice.id }}">
+                                        {{ choice.choice_text }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% elif question.question_type == 'true_false' %}
+                            <div class="choices">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" value="true" id="true_{{ question.id }}">
+                                    <label class="form-check-label" for="true_{{ question.id }}">
+                                        正确
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" value="false" id="false_{{ question.id }}">
+                                    <label class="form-check-label" for="false_{{ question.id }}">
+                                        错误
+                                    </label>
+                                </div>
+                            </div>
+                            {% elif question.question_type == 'fill_blank' %}
+                            <div class="fill-blank">
+                                <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="请输入您的答案">
+                            </div>
+                            {% elif question.question_type == 'essay' %}
+                            <div class="essay">
+                                <textarea class="form-control" name="question_{{ question.id }}" rows="5" placeholder="请输入您的答案"></textarea>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="text-muted mt-2">
+                                <small>分值: {{ question.points }} 分</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle"></i> 提交测验
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if attempt.quiz.time_limit > 0 %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 设置倒计时
+        let timeLimit = {{ attempt.quiz.time_limit }} * 60; // 转换为秒
+        const timerElement = document.getElementById('time-remaining');
+        
+        const timer = setInterval(function() {
+            timeLimit--;
+            
+            if (timeLimit <= 0) {
+                clearInterval(timer);
+                document.getElementById('quiz-form').submit();
+                return;
+            }
+            
+            const minutes = Math.floor(timeLimit / 60);
+            const seconds = timeLimit % 60;
+            
+            timerElement.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            
+            // 当时间不足5分钟时，显示红色警告
+            if (timeLimit < 300) {
+                document.getElementById('timer').classList.add('bg-danger');
+                document.getElementById('timer').classList.add('text-white');
+                document.getElementById('timer').classList.remove('bg-light');
+                document.getElementById('timer').classList.remove('text-dark');
+            }
+        }, 1000);
+    });
+</script>
+{% endif %}
+{% endblock %} 

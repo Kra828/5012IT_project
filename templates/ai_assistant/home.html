@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Assistant - Online Learning Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+    .message {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        max-width: 80%;
+    }
+    .user-message {
+        background-color: #007bff;
+        color: white;
+        margin-left: auto;
+    }
+    .assistant-message {
+        background-color: #e9ecef;
+        color: #212529;
+    }
+    .typing-indicator {
+        display: none;
+        padding: 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 0.5rem;
+        width: fit-content;
+    }
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #666;
+        border-radius: 50%;
+        margin-right: 3px;
+        animation: typing 1s infinite;
+    }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>AI Learning Assistant</h1>
+            <p class="lead">You can ask the AI Assistant any learning questions you have.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Sidebar -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Navigation</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-robot me-2"></i> AI Assistant
+                    </a>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Usage Tips</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small">You can ask the AI Assistant about:</p>
+                    <ul class="small">
+                        <li>Course content questions</li>
+                        <li>Learning method suggestions</li>
+                        <li>Homework and quiz help</li>
+                        <li>Learning resource recommendations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Chat with AI Assistant</h5>
+                    <button id="new-chat-btn" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus-circle"></i> New Chat
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Chat Area -->
+                    <div id="chat-container" class="chat-container mb-3">
+                        <div class="message assistant-message">
+                            <p class="mb-0">Hello! I'm your AI Learning Assistant. How can I help you today?</p>
+                        </div>
+                        <!-- Messages will be added here dynamically -->
+                        <div id="typing-indicator" class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <form id="chat-form">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="Enter your question..." required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        
+        // Send message
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+            
+            // Add user message to chat area
+            addMessage(userMessage, 'user');
+            
+            // Clear input field
+            userInput.value = '';
+            
+            // Show typing indicator
+            typingIndicator.style.display = 'block';
+            
+            // Scroll to bottom
+            scrollToBottom();
+            
+            // Send request to backend
+            fetch('{% url "ai_assistant:ai_query_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    query: userMessage
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `Server returned error status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                // Add AI response to chat area
+                addMessage(data.response, 'assistant');
+                
+                // Scroll to bottom
+                scrollToBottom();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                typingIndicator.style.display = 'none';
+                
+                // Show friendly error message
+                let errorMessage = 'Sorry, an error occurred. Please try again later.';
+                if (error.message) {
+                    errorMessage = `Sorry, ${error.message}`;
+                }
+                
+                addMessage(errorMessage, 'assistant', true);
+                scrollToBottom();
+            });
+        });
+        
+        // New chat
+        newChatBtn.addEventListener('click', function() {
+            // Clear chat area, keep only welcome message
+            chatContainer.innerHTML = `
+                <div class="message assistant-message">
+                    <p class="mb-0">Hello! I'm your AI Learning Assistant. How can I help you today?</p>
+                </div>
+                <div id="typing-indicator" class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            
+            // Retrieve typing indicator reference
+            typingIndicator = document.getElementById('typing-indicator');
+        });
+        
+        // Add message to chat area
+        function addMessage(content, sender, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('assistant-message');
+                if (isError) {
+                    messageDiv.classList.add('error-message');
+                    messageDiv.style.backgroundColor = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.borderColor = '#f5c6cb';
+                }
+            }
+            
+            // Handle line breaks
+            const formattedContent = content.replace(/\n/g, '<br>');
+            
+            messageDiv.innerHTML = `<p class="mb-0">${formattedContent}</p>`;
+            
+            // Insert before typing indicator
+            chatContainer.insertBefore(messageDiv, typingIndicator);
+        }
+        
+        // Scroll to bottom
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    });
+</script>
+{% endblock %} 
