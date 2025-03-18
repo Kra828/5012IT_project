@@ -1,25 +1,23 @@
 {% extends 'base.html' %}
 
-{% block title %}仪表盘 - 在线学习平台{% endblock %}
+{% block title %}Dashboard - Online Learning Platform{% endblock %}
 
 {% block content %}
     <div class="container py-5">
         <div class="row mb-4">
             <div class="col-md-8">
-                <h1>欢迎回来，{{ user.first_name|default:user.username }}</h1>
-                <p class="lead">这是您的个人学习仪表盘，您可以在这里管理您的学习进度。</p>
+                <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+                <p class="lead">This is your personal learning dashboard where you can manage your learning progress.</p>
             </div>
             <div class="col-md-4 text-end">
                 {% if user.is_teacher %}
-                    <a href="{% url 'courses:teacher_course_list' %}" class="btn btn-primary">
-                        <i class="fas fa-plus-circle"></i> 管理我的课程
-                    </a>
+                    <!-- 移除管理我的课程按钮 -->
                 {% endif %}
             </div>
         </div>
 
         <div class="row">
-            <!-- 左侧边栏 -->
+            <!-- Left Sidebar -->
             <div class="col-md-3">
                 <div class="card mb-4">
                     <div class="card-body text-center">
@@ -33,67 +31,66 @@
                         {% endif %}
                         <h5>{{ user.get_full_name|default:user.username }}</h5>
                         <p class="text-muted">
-                            {% if user.is_teacher %}教师{% else %}学生{% endif %}
+                            {% if user.is_teacher %}Teacher{% else %}Student{% endif %}
                         </p>
-                        <a href="{% url 'accounts:profile' %}" class="btn btn-sm btn-outline-primary">
-                            编辑个人资料
+                        <!-- 更改密码按钮 -->
+                        <a href="{% url 'account_change_password' %}" class="btn btn-sm btn-outline-primary">
+                            Change Password
                         </a>
                     </div>
                 </div>
 
                 <div class="list-group mb-4">
                     <a href="#" class="list-group-item list-group-item-action active">
-                        <i class="fas fa-tachometer-alt me-2"></i> 仪表盘
+                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                     </a>
                     <a href="{% url 'courses:course_list' %}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-book me-2"></i> 所有课程
+                        <i class="fas fa-book me-2"></i> All Courses
                     </a>
                     {% if user.is_student %}
-                        <a href="#enrolled-courses" class="list-group-item list-group-item-action">
-                            <i class="fas fa-graduation-cap me-2"></i> 我的课程
-                        </a>
+                        <!-- 移除我的课程链接 -->
                     {% endif %}
                     <a href="{% url 'forum:board_list' %}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-comments me-2"></i> 讨论区
+                        <i class="fas fa-comments me-2"></i> Discussion Forum
                     </a>
                     <a href="{% url 'ai_assistant:home' %}" class="list-group-item list-group-item-action">
-                        <i class="fas fa-robot me-2"></i> AI助手
+                        <i class="fas fa-robot me-2"></i> AI Assistant
                     </a>
                 </div>
             </div>
 
-            <!-- 主要内容 -->
+            <!-- Main Content -->
             <div class="col-md-9">
                 {% if user.is_student %}
-                    <!-- 学生仪表盘 -->
+                    <!-- Student Dashboard -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h5 class="mb-0">学习进度概览</h5>
+                            <h5 class="mb-0">Learning Progress Overview</h5>
                         </div>
                         <div class="card-body">
                             <div class="row text-center">
                                 <div class="col-md-4">
                                     <div class="display-4">{{ enrolled_courses|default:"0" }}</div>
-                                    <p>已注册课程</p>
+                                    <p>Enrolled Courses</p>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="display-4">{{ completed_lessons|default:"0" }}</div>
-                                    <p>已完成课程</p>
+                                    <p>Completed Lessons</p>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="display-4">{{ quiz_attempts|default:"0" }}</div>
-                                    <p>测验尝试</p>
+                                    <p>Quiz Attempts</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 已注册课程 -->
+                    <!-- Enrolled Courses -->
                     <div class="card mb-4" id="enrolled-courses">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">我的课程</h5>
+                            <h5 class="mb-0">My Courses</h5>
                             <a href="{% url 'courses:course_list' %}" class="btn btn-sm btn-outline-primary">
-                                浏览更多课程
+                                Browse More Courses
                             </a>
                         </div>
                         <div class="card-body">
@@ -112,13 +109,13 @@
                                                 <div class="card-body">
                                                     <h5 class="card-title">{{ enrollment.course.title }}</h5>
                                                     <p class="card-text small text-muted">
-                                                        讲师: {{ enrollment.course.instructor.get_full_name|default:enrollment.course.instructor.username }}
+                                                        Instructor: {{ enrollment.course.instructor.get_full_name|default:enrollment.course.instructor.username }}
                                                     </p>
                                                     <div class="progress mb-2">
                                                         <div class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
                                                     </div>
                                                     <a href="{% url 'courses:course_detail' enrollment.course.slug %}" class="btn btn-sm btn-primary">
-                                                        继续学习
+                                                        Continue Learning
                                                     </a>
                                                 </div>
                                             </div>
@@ -130,20 +127,20 @@
                                     <div class="display-1 text-muted mb-3">
                                         <i class="fas fa-book"></i>
                                     </div>
-                                    <h4>您还没有注册任何课程</h4>
-                                    <p>浏览我们的课程目录，开始您的学习之旅。</p>
+                                    <h4>You haven't enrolled in any courses yet</h4>
+                                    <p>Browse our course catalog to start your learning journey.</p>
                                     <a href="{% url 'courses:course_list' %}" class="btn btn-primary">
-                                        浏览课程
+                                        Browse Courses
                                     </a>
                                 </div>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- 学习建议 -->
+                    <!-- Learning Recommendations -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h5 class="mb-0">学习建议</h5>
+                            <h5 class="mb-0">Learning Recommendations</h5>
                         </div>
                         <div class="card-body">
                             {% if recommendations %}
@@ -160,44 +157,44 @@
                                 </div>
                             {% else %}
                                 <div class="text-center py-4">
-                                    <p>暂无学习建议。随着您的学习进度，AI助手将为您提供个性化的学习建议。</p>
+                                    <p>No learning recommendations yet. As you progress with your learning, the AI assistant will provide personalized learning recommendations for you.</p>
                                     <a href="{% url 'ai_assistant:home' %}" class="btn btn-outline-primary">
-                                        咨询AI助手
+                                        Consult AI Assistant
                                     </a>
                                 </div>
                             {% endif %}
                         </div>
                     </div>
                 {% else %}
-                    <!-- 教师仪表盘 -->
+                    <!-- Teacher Dashboard -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h5 class="mb-0">教学概览</h5>
+                            <h5 class="mb-0">Teaching Overview</h5>
                         </div>
                         <div class="card-body">
                             <div class="row text-center">
                                 <div class="col-md-4">
                                     <div class="display-4">{{ courses_taught|default:"0" }}</div>
-                                    <p>已创建课程</p>
+                                    <p>Created Courses</p>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="display-4">{{ total_students|default:"0" }}</div>
-                                    <p>学生总数</p>
+                                    <p>Total Students</p>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="display-4">{{ pending_submissions|default:"0" }}</div>
-                                    <p>待批改作业</p>
+                                    <p>Pending Assignments</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 我的课程 -->
+                    <!-- My Courses -->
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">我的课程</h5>
+                            <h5 class="mb-0">My Courses</h5>
                             <a href="{% url 'courses:course_create' %}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-plus-circle"></i> 创建新课程
+                                <i class="fas fa-plus-circle"></i> Create New Course
                             </a>
                         </div>
                         <div class="card-body">
@@ -206,11 +203,11 @@
                                     <table class="table table-hover">
                                         <thead>
                                             <tr>
-                                                <th>课程名称</th>
-                                                <th>分类</th>
-                                                <th>学生数</th>
-                                                <th>状态</th>
-                                                <th>操作</th>
+                                                <th>Course Name</th>
+                                                <th>Category</th>
+                                                <th>Students</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -225,9 +222,9 @@
                                                     <td>{{ course.students.count }}</td>
                                                     <td>
                                                         {% if course.is_published %}
-                                                            <span class="badge bg-success">已发布</span>
+                                                            <span class="badge bg-success">Published</span>
                                                         {% else %}
-                                                            <span class="badge bg-warning">草稿</span>
+                                                            <span class="badge bg-warning">Draft</span>
                                                         {% endif %}
                                                     </td>
                                                     <td>
@@ -248,40 +245,13 @@
                             {% else %}
                                 <div class="text-center py-5">
                                     <div class="display-1 text-muted mb-3">
-                                        <i class="fas fa-chalkboard-teacher"></i>
+                                        <i class="fas fa-book"></i>
                                     </div>
-                                    <h4>您还没有创建任何课程</h4>
-                                    <p>创建您的第一个课程，开始您的教学之旅。</p>
+                                    <h4>You haven't created any courses yet</h4>
+                                    <p>Create your first course to start your teaching journey.</p>
                                     <a href="{% url 'courses:course_create' %}" class="btn btn-primary">
-                                        创建课程
+                                        Create Course
                                     </a>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- 待批改作业 -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">待批改作业</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if pending_submissions %}
-                                <div class="list-group">
-                                    {% for submission in pending_submissions %}
-                                        <a href="{% url 'quizzes:grade_submission' submission.assignment.id submission.id %}" class="list-group-item list-group-item-action">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h5 class="mb-1">{{ submission.assignment.title }}</h5>
-                                                <small>{{ submission.submitted_at|date:"Y-m-d H:i" }}</small>
-                                            </div>
-                                            <p class="mb-1">学生: {{ submission.student.get_full_name|default:submission.student.username }}</p>
-                                            <small>课程: {{ submission.assignment.course.title }}</small>
-                                        </a>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <div class="text-center py-4">
-                                    <p>暂无待批改的作业。</p>
                                 </div>
                             {% endif %}
                         </div>

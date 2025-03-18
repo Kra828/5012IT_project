@@ -1,5 +1,5 @@
 Django==5.1.7
-django-allauth==0.65.4
+django-allauth==65.4.1
 django-crispy-forms==2.3
 django-ckeditor==6.7.2
 Pillow==11.1.0
