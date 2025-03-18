@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
 {% block title %}{{ quiz.title }} - Quiz Details{% endblock %}
 
@@ -44,7 +45,7 @@
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a></li>
-                    {% if is_teacher_view %}
+                    {% if is_teacher %}
                     <li class="breadcrumb-item"><a href="{% url 'quizzes:teacher_quiz_list' %}">Quiz Management</a></li>
                     {% else %}
                     <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_list' %}">Quiz List</a></li>
@@ -60,7 +61,7 @@
             <div class="card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">{{ quiz.title }}</h4>
-                    <span class="question-count badge bg-light text-dark">5 questions</span>
+                    <span class="question-count badge bg-light text-dark">5 Questions</span>
                 </div>
                 <div class="card-body">
                     <p class="lead">{{ quiz.description|default:"No description" }}</p>
@@ -104,46 +105,33 @@
                     </div>
                     
                     <!-- Quiz Status -->
-                    {% if is_student_view %}
+                    {% if not is_teacher %}
                     <div class="mt-4">
-                        {% if not is_enrolled %}
-                        <div class="quiz-status unavailable">
-                            <h5><i class="fas fa-exclamation-circle text-danger"></i> You are not enrolled in this course</h5>
-                            <p class="mb-0">You need to enroll in the course first to take this quiz.</p>
+                        {% if message %}
+                        <div class="quiz-status {% if can_attempt %}available{% else %}unavailable{% endif %}">
+                            <h5>
+                                {% if can_attempt %}
+                                <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                <i class="fas fa-exclamation-circle text-danger"></i>
+                                {% endif %}
+                                {{ message }}
+                            </h5>
                         </div>
-                        {% else %}
-                            {% if can_attempt %}
-                            <div class="quiz-status available">
-                                <h5><i class="fas fa-check-circle text-success"></i> Quiz is available</h5>
-                                <p class="mb-0">You can take this quiz now. Note: Each quiz can only be taken once.</p>
-                                <div class="mt-3">
-                                    <a href="{% url 'quizzes:quiz_attempt' quiz.id %}" class="btn btn-success">
-                                        <i class="fas fa-play-circle"></i> Start Quiz
-                                    </a>
-                                </div>
-                            </div>
-                            {% elif quiz.start_time and quiz.start_time > now %}
-                            <div class="quiz-status upcoming">
-                                <h5><i class="fas fa-clock text-warning"></i> Quiz has not started yet</h5>
-                                <p class="mb-0">Quiz will start on {{ quiz.start_time|date:"Y-m-d H:i" }}.</p>
-                            </div>
-                            {% elif quiz.end_time and quiz.end_time < now %}
-                            <div class="quiz-status expired">
-                                <h5><i class="fas fa-times-circle text-secondary"></i> Quiz has ended</h5>
-                                <p class="mb-0">Quiz ended on {{ quiz.end_time|date:"Y-m-d H:i" }}.</p>
-                            </div>
-                            {% else %}
-                            <div class="quiz-status unavailable">
-                                <h5><i class="fas fa-exclamation-triangle text-danger"></i> You have already taken this quiz</h5>
-                                <p class="mb-0">Each quiz can only be taken once. You can view your previous attempt record.</p>
-                            </div>
-                            {% endif %}
+                        {% endif %}
+                        
+                        {% if can_attempt %}
+                        <div class="mt-3">
+                            <a href="{% url 'quizzes:quiz_attempt' quiz.id %}" class="btn btn-success">
+                                <i class="fas fa-play-circle"></i> Start Quiz
+                            </a>
+                        </div>
                         {% endif %}
                     </div>
                     {% endif %}
                     
                     <!-- Teacher Actions -->
-                    {% if is_teacher_view %}
+                    {% if is_teacher %}
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                         <a href="{% url 'quizzes:quiz_edit' quiz.id %}" class="btn btn-primary">
                             <i class="fas fa-edit"></i> Edit Quiz
@@ -159,7 +147,7 @@
         
         <div class="col-md-4">
             <!-- Quiz Attempt Records -->
-            {% if is_student_view and attempts %}
+            {% if not is_teacher and attempts %}
             <div class="card">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">Your Quiz Attempts</h5>
@@ -200,7 +188,7 @@
             {% endif %}
             
             <!-- Quiz Statistics (Teacher View) -->
-            {% if is_teacher_view %}
+            {% if is_teacher %}
             <div class="card">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">Quiz Statistics</h5>
@@ -240,7 +228,7 @@
 </div>
 
 <!-- Delete Quiz Confirmation Dialog -->
-{% if is_teacher_view %}
+{% if is_teacher %}
 <div class="modal fade" id="deleteQuizModal" tabindex="-1" aria-labelledby="deleteQuizModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

@@ -18,6 +18,12 @@ class CourseAdmin(admin.ModelAdmin):
     inlines = [ChapterInline]
     actions = ['publish_courses', 'unpublish_courses', 'assign_teacher']
     
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 限制instructor字段只显示teacher类型的用户
+        if db_field.name == "instructor":
+            kwargs["queryset"] = CustomUser.objects.filter(user_type='teacher')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
     def publish_courses(self, request, queryset):
         """发布选中的课程"""
         updated = queryset.update(is_published=True)
@@ -70,8 +76,39 @@ class CourseFileAdmin(admin.ModelAdmin):
     list_filter = ('course', 'uploaded_by', 'upload_date')
     search_fields = ('title', 'description', 'course__title')
     date_hierarchy = 'upload_date'
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 限制course字段只显示已经有讲师的课程
+        if db_field.name == "course":
+            kwargs["queryset"] = Course.objects.filter(instructor__isnull=False)
+        # 限制uploaded_by字段只显示教师类型的用户
+        elif db_field.name == "uploaded_by":
+            kwargs["queryset"] = CustomUser.objects.filter(user_type='teacher')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-# 取消注册不需要的模型
-# admin.site.register(Chapter)
-# admin.site.register(Lesson)
+class LessonAdmin(admin.ModelAdmin):
+    list_display = ('title', 'chapter', 'duration', 'order')
+    list_filter = ('chapter__course',)
+    search_fields = ('title', 'content', 'chapter__title')
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 限制chapter字段只显示已经有课程的章节
+        if db_field.name == "chapter":
+            kwargs["queryset"] = Chapter.objects.filter(course__instructor__isnull=False)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+class ChapterAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'order')
+    list_filter = ('course',)
+    search_fields = ('title', 'description', 'course__title')
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 限制course字段只显示已经有讲师的课程
+        if db_field.name == "course":
+            kwargs["queryset"] = Course.objects.filter(instructor__isnull=False)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+# 取消注册不需要的模型或注册定制的Admin类
+# admin.site.register(Chapter, ChapterAdmin)
+# admin.site.register(Lesson, LessonAdmin)
 # admin.site.register(LessonProgress)

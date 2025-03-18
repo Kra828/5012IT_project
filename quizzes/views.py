@@ -15,12 +15,12 @@ from .models import Quiz, Question, Choice, QuizAttempt, StudentAnswer
 from .forms import QuizForm, QuestionForm, ChoiceForm, StudentAnswerForm, ChoiceFormSet
 
 class QuizListView(LoginRequiredMixin, View):
-    """测验列表视图"""
+    """Quiz List View"""
     def get(self, request):
-        # 学生视图 - 显示学生可以参加的测验
+        # Student view - display quizzes available to the student
         if hasattr(request.user, 'is_student') and request.user.is_student():
-            # 获取所有课程的测验
-            # 不使用student_profile.enrolled_courses，因为自动注册逻辑
+            # Get quizzes from all courses
+            # Not using student_profile.enrolled_courses due to auto-registration logic
             course_filter = {}
             if 'course' in request.GET and request.GET['course']:
                 try:
@@ -31,13 +31,13 @@ class QuizListView(LoginRequiredMixin, View):
                 
             enrolled_courses = Course.objects.filter(**course_filter)
             
-            # 获取这些课程中已发布的测验
+            # Get published quizzes from these courses
             available_quizzes = Quiz.objects.filter(
                 course__in=enrolled_courses,
                 is_published=True
             ).order_by('-created_at')
             
-            # 获取已完成的测验及其尝试记录
+            # Get completed quizzes and their attempt records
             completed_attempts = QuizAttempt.objects.filter(
                 student=request.user,
                 is_completed=True
@@ -46,7 +46,7 @@ class QuizListView(LoginRequiredMixin, View):
             completed_quiz_ids = [attempt.quiz_id for attempt in completed_attempts]
             completed_attempts_dict = {attempt.quiz_id: attempt for attempt in completed_attempts}
             
-            # 为每个测验添加状态信息
+            # Add status information for each quiz
             now = timezone.now()
             quizzes_with_status = []
             
@@ -60,17 +60,17 @@ class QuizListView(LoginRequiredMixin, View):
                 quiz_status['start_time'] = quiz.start_time
                 quiz_status['end_time'] = quiz.end_time
                 
-                # 检查测验是否已完成
+                # Check if the quiz has been completed
                 if quiz.id in completed_quiz_ids:
                     quiz_status['status'] = 'completed'
                     quiz_status['attempt'] = completed_attempts_dict[quiz.id]
-                # 检查测验是否可以参加
+                # Check if the quiz can be taken
                 elif (quiz.start_time is None or now >= quiz.start_time) and (quiz.end_time is None or now <= quiz.end_time):
                     quiz_status['status'] = 'available'
-                # 检查测验是否即将开始
+                # Check if the quiz will start soon
                 elif quiz.start_time and now < quiz.start_time:
                     quiz_status['status'] = 'upcoming'
-                # 检查测验是否已过期
+                # Check if the quiz has expired
                 elif quiz.end_time and now > quiz.end_time:
                     quiz_status['status'] = 'expired'
                 
@@ -81,7 +81,7 @@ class QuizListView(LoginRequiredMixin, View):
                 'enrolled_courses': enrolled_courses
             })
         
-        # 教师视图 - 显示教师创建的测验
+        # Teacher view - display quizzes created by the teacher
         else:
             quizzes = Quiz.objects.filter(course__instructor=request.user).order_by('-created_at')
             return render(request, 'quizzes/teacher_quiz_list.html', {
@@ -89,68 +89,79 @@ class QuizListView(LoginRequiredMixin, View):
             })
 
 class QuizDetailView(LoginRequiredMixin, View):
-    """测验详情视图"""
+    """Quiz Detail View"""
     def get(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
+        now = timezone.now()
         
-        # 确认是否是教师视图
-        is_teacher_view = quiz.course.instructor == request.user
+        # Confirm if it's a teacher view
+        is_teacher = quiz.course.instructor == request.user
         
-        # 确认是否是学生视图
-        is_student_view = False
-        is_enrolled = True  # 假设所有学生都已注册
-        can_attempt = False
-        
-        if hasattr(request.user, 'is_student') and request.user.is_student():
-            is_student_view = True
+        # Prepare context
+        context = {
+            'quiz': quiz,
+            'is_teacher': is_teacher,
+            'can_attempt': False,
+            'message': None,
+            'now': now
+        }
+
+        # If it's a teacher, get all student attempt records
+        if is_teacher:
+            context['attempts'] = QuizAttempt.objects.filter(
+                quiz=quiz
+            ).order_by('-started_at')
+            return render(request, 'quizzes/quiz_detail.html', context)
             
-            # 检查是否已经尝试过该测验
-            has_attempted = QuizAttempt.objects.filter(
+        # Student view below
+        if hasattr(request.user, 'is_student') and request.user.is_student():
+            # Check quiz status
+            if not quiz.is_published:
+                context['message'] = _("This quiz has not been published yet.")
+                return render(request, 'quizzes/quiz_detail.html', context)
+            
+            # Check if already attempted the quiz
+            has_completed = QuizAttempt.objects.filter(
                 quiz=quiz,
                 student=request.user,
                 is_completed=True
             ).exists()
             
-            # 检查测验是否可以参加
-            now = timezone.now()
-            is_available = (
-                quiz.is_published and
-                (quiz.start_time is None or now >= quiz.start_time) and
-                (quiz.end_time is None or now <= quiz.end_time)
-            )
-            
-            can_attempt = is_available and not has_attempted
-        
-        # 获取学生的尝试记录
-        attempts = []
-        if is_student_view:
-            attempts = QuizAttempt.objects.filter(
+            # Get all attempt records (including incomplete ones)
+            context['attempts'] = QuizAttempt.objects.filter(
                 quiz=quiz,
                 student=request.user
             ).order_by('-started_at')
-        
-        # 准备上下文
-        context = {
-            'quiz': quiz,
-            'is_teacher_view': is_teacher_view,
-            'is_student_view': is_student_view,
-            'is_enrolled': is_enrolled,
-            'can_attempt': can_attempt,
-            'attempts': attempts
-        }
-        
+            
+            # Check quiz time limits
+            if quiz.start_time and now < quiz.start_time:
+                context['message'] = _("The quiz has not started yet.")
+                return render(request, 'quizzes/quiz_detail.html', context)
+                
+            if quiz.end_time and now > quiz.end_time:
+                context['message'] = _("The quiz has ended.")
+                return render(request, 'quizzes/quiz_detail.html', context)
+                
+            if has_completed:
+                context['message'] = _("You have already taken this quiz.")
+                return render(request, 'quizzes/quiz_detail.html', context)
+                
+            # Can attempt quiz
+            context['can_attempt'] = True
+            context['message'] = _("You can take this quiz now. Note that each quiz can only be taken once.")
+            
         return render(request, 'quizzes/quiz_detail.html', context)
 
 class QuizAttemptView(LoginRequiredMixin, View):
-    """测验尝试视图"""
+    """Quiz Attempt View"""
     def get(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
         
-        # 确认用户是学生
+        # Confirm that the user is a student
         if not request.user.is_student():
             return HttpResponseForbidden(_("Only students can take quizzes."))
         
-        # 检查测验是否可以参加
+        # Check if the quiz can be attempted
         now = timezone.now()
         if not quiz.is_published:
             messages.error(request, _("This quiz is not published yet."))
@@ -164,7 +175,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
             messages.error(request, _("This quiz has already ended."))
             return redirect('quizzes:quiz_detail', quiz_id=quiz.id)
         
-        # 检查是否已经尝试过该测验
+        # Check if the quiz has already been attempted
         has_attempted = QuizAttempt.objects.filter(
             quiz=quiz,
             student=request.user,
@@ -175,7 +186,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
             messages.error(request, _("You have already completed this quiz. Each quiz can only be taken once."))
             return redirect('quizzes:quiz_detail', quiz_id=quiz.id)
         
-        # 获取或创建测验尝试记录
+        # Get or create quiz attempt record
         attempt, created = QuizAttempt.objects.get_or_create(
             quiz=quiz,
             student=request.user,
@@ -183,13 +194,13 @@ class QuizAttemptView(LoginRequiredMixin, View):
             defaults={'started_at': now}
         )
         
-        # 获取测验问题
+        # Get quiz questions
         questions = quiz.get_questions()
         
-        # 准备问题表单
+        # Prepare question forms
         question_forms = []
         for question in questions:
-            # 检查是否已有答案
+            # Check if there is already an answer
             try:
                 answer = StudentAnswer.objects.get(attempt=attempt, question=question)
                 form = StudentAnswerForm(instance=answer, question=question)
@@ -198,7 +209,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
             
             question_forms.append((question, form))
         
-        # 准备上下文
+        # Prepare context
         context = {
             'quiz': quiz,
             'attempt': attempt,
@@ -213,11 +224,11 @@ class QuizAttemptView(LoginRequiredMixin, View):
     def post(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
         
-        # 确认用户是学生
+        # Confirm that the user is a student
         if not request.user.is_student():
             return HttpResponseForbidden(_("Only students can take quizzes."))
         
-        # 获取测验尝试记录
+        # Get quiz attempt record
         try:
             attempt = QuizAttempt.objects.get(
                 quiz=quiz,
@@ -228,7 +239,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
             messages.error(request, _("No attempt record found for this quiz."))
             return redirect('quizzes:quiz_detail', quiz_id=quiz.id)
         
-        # 检查是否超时
+        # Check if time limit has been exceeded
         if quiz.time_limit > 0:
             now = timezone.now()
             end_time = attempt.started_at + timezone.timedelta(minutes=quiz.time_limit)
@@ -240,7 +251,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
                 messages.warning(request, _("Time is up! Your answers have been automatically submitted."))
                 return redirect('quizzes:quiz_result', attempt_id=attempt.id)
         
-        # 处理学生答案
+        # Process student answers
         questions = quiz.get_questions()
         for question in questions:
             choice_id = request.POST.get(f'question_{question.id}')
@@ -249,7 +260,7 @@ class QuizAttemptView(LoginRequiredMixin, View):
             
             try:
                 choice = Choice.objects.get(id=choice_id, question=question)
-                # 创建或更新答案
+                # Create or update answer
                 StudentAnswer.objects.update_or_create(
                     attempt=attempt,
                     question=question,
@@ -258,27 +269,27 @@ class QuizAttemptView(LoginRequiredMixin, View):
             except Choice.DoesNotExist:
                 continue
         
-        # 标记尝试为已完成
+        # Mark attempt as completed
         attempt.is_completed = True
         attempt.completed_at = timezone.now()
         attempt.save()
         
-        # 计算得分
+        # Calculate score
         attempt.calculate_score()
         
         messages.success(request, _("Quiz completed! You can now view your results."))
         return redirect('quizzes:quiz_result', attempt_id=attempt.id)
 
 class QuizResultView(LoginRequiredMixin, View):
-    """测验结果视图"""
+    """Quiz Result View"""
     def get(self, request, attempt_id):
         attempt = get_object_or_404(QuizAttempt, id=attempt_id)
         
-        # 确认是否有权查看
+        # Verify permission to view
         if attempt.student != request.user and attempt.quiz.course.instructor != request.user:
             return HttpResponseForbidden(_("You don't have permission to view this quiz result."))
         
-        # 获取问题和答案
+        # Get questions and answers
         questions = attempt.quiz.get_questions()
         answers = []
         
@@ -292,14 +303,14 @@ class QuizResultView(LoginRequiredMixin, View):
                     'is_correct': is_correct
                 })
             except StudentAnswer.DoesNotExist:
-                # 没有回答的问题
+                # Questions without answers
                 answers.append({
                     'question': question,
                     'selected_choice': None,
                     'is_correct': False
                 })
         
-        # 准备上下文
+        # Prepare context
         context = {
             'attempt': attempt,
             'quiz': attempt.quiz,
@@ -312,11 +323,11 @@ class QuizResultView(LoginRequiredMixin, View):
         return render(request, 'quizzes/quiz_result.html', context)
 
 class QuizDeleteView(LoginRequiredMixin, View):
-    """测验删除视图"""
+    """Quiz Delete View"""
     def post(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
         
-        # 确认教师是课程的讲师
+        # Verify that the teacher is the course instructor
         if quiz.course.instructor != request.user:
             messages.error(request, _("You can only delete quizzes you created."))
             return redirect('quizzes:teacher_quiz_list')
@@ -328,15 +339,15 @@ class QuizDeleteView(LoginRequiredMixin, View):
         return redirect('quizzes:teacher_quiz_list')
 
 class QuizCreateView(LoginRequiredMixin, View):
-    """测验创建视图"""
+    """Quiz Creation View"""
     def get(self, request):
-        # 获取教师教授的课程
+        # Get courses taught by the teacher
         courses = Course.objects.filter(instructor=request.user)
         if not courses.exists():
             messages.error(request, _("You need to create a course before creating a quiz."))
             return redirect('courses:course_create')
         
-        # 创建测验表单
+        # Create quiz form
         form = QuizForm()
         form.fields['course'].queryset = courses
         
@@ -348,20 +359,20 @@ class QuizCreateView(LoginRequiredMixin, View):
     
     @transaction.atomic
     def post(self, request):
-        # 获取教师教授的课程
+        # Get courses taught by the teacher
         courses = Course.objects.filter(instructor=request.user)
         
-        # 处理测验表单
+        # Process quiz form
         form = QuizForm(request.POST)
         form.fields['course'].queryset = courses
         
         if form.is_valid():
-            # 保存测验
+            # Save quiz
             quiz = form.save()
             
-            # 处理5个问题
+            # Process 5 questions
             questions_data = []
-            for i in range(1, 6):  # 固定5个问题
+            for i in range(1, 6):  # Fixed 5 questions
                 question_text = request.POST.get(f'question_{i}')
                 if not question_text:
                     messages.error(request, _("All questions must be filled out."))
@@ -371,17 +382,17 @@ class QuizCreateView(LoginRequiredMixin, View):
                         'is_create': True
                     })
                 
-                # 创建问题
+                # Create question
                 question = Question.objects.create(
                     quiz=quiz,
                     question_text=question_text,
                     question_number=i
                 )
                 
-                # 处理4个选项
+                # Process 4 choices
                 choices_data = []
                 has_correct = False
-                for j in range(1, 5):  # 固定4个选项
+                for j in range(1, 5):  # Fixed 4 choices
                     choice_text = request.POST.get(f'question_{i}_choice_{j}')
                     is_correct = request.POST.get(f'question_{i}_correct_{j}') == 'on'
                     
@@ -396,7 +407,7 @@ class QuizCreateView(LoginRequiredMixin, View):
                     if is_correct:
                         has_correct = True
                     
-                    # 创建选项
+                    # Create choice
                     Choice.objects.create(
                         question=question,
                         choice_text=choice_text,
@@ -404,10 +415,10 @@ class QuizCreateView(LoginRequiredMixin, View):
                         choice_number=j
                     )
                 
-                # 确保每个问题至少有一个正确答案
+                # Ensure each question has at least one correct answer
                 if not has_correct:
                     messages.error(request, _(f"Question {i} must be marked with at least one correct answer."))
-                    # 删除已创建的问题和选项
+                    # Delete created question and choices
                     question.delete()
                     return render(request, 'quizzes/quiz_form.html', {
                         'form': form,
@@ -418,7 +429,7 @@ class QuizCreateView(LoginRequiredMixin, View):
             messages.success(request, _("Quiz created successfully!"))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 表单验证失败
+        # Form validation failed
         return render(request, 'quizzes/quiz_form.html', {
             'form': form,
             'courses': courses,
@@ -426,21 +437,21 @@ class QuizCreateView(LoginRequiredMixin, View):
         })
 
 class QuizUpdateView(LoginRequiredMixin, View):
-    """测验更新视图"""
+    """Quiz Update View"""
     def get(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
         
-        # 确认教师是课程的讲师
+        # Verify that the teacher is the course instructor
         if quiz.course.instructor != request.user:
             messages.error(request, _("You can only edit quizzes you created."))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 准备测验表单
+        # Prepare quiz form
         form = QuizForm(instance=quiz)
         courses = Course.objects.filter(instructor=request.user)
         form.fields['course'].queryset = courses
         
-        # 获取测验的问题和选项
+        # Get quiz questions and choices
         questions = quiz.get_questions()
         
         return render(request, 'quizzes/quiz_form.html', {
@@ -455,22 +466,22 @@ class QuizUpdateView(LoginRequiredMixin, View):
     def post(self, request, quiz_id):
         quiz = get_object_or_404(Quiz, id=quiz_id)
         
-        # 确认教师是课程的讲师
+        # Verify that the teacher is the course instructor
         if quiz.course.instructor != request.user:
             messages.error(request, _("You can only edit quizzes you created."))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 处理测验表单
+        # Process quiz form
         form = QuizForm(request.POST, instance=quiz)
         courses = Course.objects.filter(instructor=request.user)
         form.fields['course'].queryset = courses
         
         if form.is_valid():
-            # 保存测验
+            # Save quiz
             quiz = form.save()
             
-            # 处理5个问题
-            for i in range(1, 6):  # 固定5个问题
+            # Process 5 questions
+            for i in range(1, 6):  # Fixed 5 questions
                 question = Question.objects.get_or_create(
                     quiz=quiz,
                     question_number=i,
@@ -491,9 +502,9 @@ class QuizUpdateView(LoginRequiredMixin, View):
                 question.question_text = question_text
                 question.save()
                 
-                # 处理4个选项
+                # Process 4 choices
                 has_correct = False
-                for j in range(1, 5):  # 固定4个选项
+                for j in range(1, 5):  # Fixed 4 choices
                     choice = Choice.objects.get_or_create(
                         question=question,
                         choice_number=j,
@@ -520,7 +531,7 @@ class QuizUpdateView(LoginRequiredMixin, View):
                     choice.is_correct = is_correct
                     choice.save()
                 
-                # 确保每个问题至少有一个正确答案
+                # Ensure each question has at least one correct answer
                 if not has_correct:
                     messages.error(request, _(f"Question {i} must be marked with at least one correct answer."))
                     return render(request, 'quizzes/quiz_form.html', {
@@ -534,7 +545,7 @@ class QuizUpdateView(LoginRequiredMixin, View):
             messages.success(request, _("Quiz updated successfully!"))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 表单验证失败
+        # Form validation failed
         return render(request, 'quizzes/quiz_form.html', {
             'form': form,
             'quiz': quiz,
@@ -544,9 +555,9 @@ class QuizUpdateView(LoginRequiredMixin, View):
         })
 
 class TeacherQuizListView(LoginRequiredMixin, View):
-    """教师测验列表视图"""
+    """Teacher Quiz List View"""
     def get(self, request):
-        # 获取当前教师创建的所有测验
+        # Get all quizzes created by the current teacher
         quizzes = Quiz.objects.filter(course__instructor=request.user).order_by('-created_at')
         return render(request, 'quizzes/teacher_quiz_list.html', {
             'quizzes': quizzes
@@ -561,20 +572,20 @@ class QuestionListView(LoginRequiredMixin, View):
             messages.error(request, _("You can only manage questions for courses you teach."))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 从会话中获取问题数据并处理
+        # Get question data from session and process
         question_data = request.session.pop('question_data', None)
         if question_data:
-            # 直接在这里处理问题数据，不使用post方法
+            # Process question data directly here, not using post method
             import json
             try:
                 questions_list = json.loads(question_data)
                 
-                # 创建问题和选项
+                # Create questions and choices
                 for idx, q_data in enumerate(questions_list):
                     if not q_data.get('question', '') or not any(q_data.get('options', [])):
-                        continue  # 跳过空问题
+                        continue  # Skip empty questions
                     
-                    # 创建问题
+                    # Create question
                     question = Question.objects.create(
                         quiz=quiz,
                         question_text=q_data['question'],
@@ -583,10 +594,10 @@ class QuestionListView(LoginRequiredMixin, View):
                         order=idx
                     )
                     
-                    # 创建选项
+                    # Create choices
                     for opt_idx, option_text in enumerate(q_data['options']):
                         if not option_text:
-                            continue  # 跳过空选项
+                            continue  # Skip empty options
                             
                         Choice.objects.create(
                             question=question,
@@ -620,7 +631,7 @@ class QuestionListView(LoginRequiredMixin, View):
             messages.error(request, _("You can only manage questions for courses you teach."))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 从请求或会话中获取问题数据
+        # Get question data from request or session
         question_data = request.POST.get('question_data', '')
         if not question_data and hasattr(request, 'session'):
             question_data = request.session.get('question_data', '')
@@ -630,12 +641,12 @@ class QuestionListView(LoginRequiredMixin, View):
             try:
                 questions_list = json.loads(question_data)
                 
-                # 创建问题和选项
+                # Create questions and choices
                 for idx, q_data in enumerate(questions_list):
                     if not q_data.get('question', '') or not any(q_data.get('options', [])):
-                        continue  # 跳过空问题
+                        continue  # Skip empty questions
                     
-                    # 创建问题
+                    # Create question
                     question = Question.objects.create(
                         quiz=quiz,
                         question_text=q_data['question'],
@@ -644,10 +655,10 @@ class QuestionListView(LoginRequiredMixin, View):
                         order=idx
                     )
                     
-                    # 创建选项
+                    # Create choices
                     for opt_idx, option_text in enumerate(q_data['options']):
                         if not option_text:
-                            continue  # 跳过空选项
+                            continue  # Skip empty options
                             
                         Choice.objects.create(
                             question=question,
@@ -675,7 +686,7 @@ class QuestionDeleteView(View):
     def get(self, request, quiz_id, question_id):
         question = get_object_or_404(Question, id=question_id, quiz_id=quiz_id)
         
-        # 检查教师是否是该课程的讲师
+        # Check if the teacher is the instructor of the course
         if question.quiz.course.instructor != request.user:
             messages.error(request, _("You can only delete questions for quizzes in courses you teach."))
             return redirect('quizzes:teacher_quiz_list')
@@ -688,18 +699,18 @@ class QuestionDeleteView(View):
     def post(self, request, quiz_id, question_id):
         question = get_object_or_404(Question, id=question_id, quiz_id=quiz_id)
         
-        # 检查教师是否是该课程的讲师
+        # Check if the teacher is the instructor of the course
         if question.quiz.course.instructor != request.user:
             messages.error(request, _("You can only delete questions for quizzes in courses you teach."))
             return redirect('quizzes:teacher_quiz_list')
         
-        # 删除问题
+        # Delete question
         question.delete()
         
-        # 添加成功消息
+        # Add success message
         messages.success(request, _("Question has been deleted successfully."))
         
-        # 重定向到问题列表
+        # Redirect to question list
         return redirect('quizzes:question_list', quiz_id=quiz_id)
 
 class AssignmentListView(View):

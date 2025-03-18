@@ -8,6 +8,13 @@ from django.utils.translation import gettext_lazy as _
 
 from .forms import UserProfileForm, TeacherProfileForm, StudentProfileForm
 from quizzes.models import QuizAttempt
+from courses.models import Course, Enrollment
+
+# Try to import Submission model if it exists
+try:
+    from assignments.models import Submission
+except ImportError:
+    Submission = None
 
 User = get_user_model()
 
@@ -42,7 +49,7 @@ class UpdateProfileView(LoginRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 class DashboardView(LoginRequiredMixin, TemplateView):
-    """用户仪表盘视图"""
+    """User Dashboard View"""
     template_name = 'dashboard.html'
     
     def get_context_data(self, **kwargs):
@@ -50,37 +57,49 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         user = self.request.user
         
         if user.is_student():
-            # 获取学生已注册的课程
-            enrolled_courses = user.enrollments.all()
-            context['enrolled_courses'] = enrolled_courses
+            # Get courses the student is enrolled in
+            # Get all published courses first
+            all_courses = Course.objects.filter(is_published=True)
+            enrollments = []
             
-            # 为每个课程计算测验完成进度
-            for enrollment in enrolled_courses:
-                total_quizzes = enrollment.course.quizzes.count()
+            # Ensure enrollment records exist for all courses and build the enrollment list
+            for course in all_courses:
+                enrollment, created = Enrollment.objects.get_or_create(
+                    student=user,
+                    course=course
+                )
+                
+                # Calculate quiz completion progress
+                total_quizzes = course.quizzes.count()
                 completed_quizzes = QuizAttempt.objects.filter(
-                    quiz__course=enrollment.course,
+                    quiz__course=course,
                     student=user,
                     is_completed=True
                 ).count()
+                
                 enrollment.quiz_progress = {
                     'total': total_quizzes,
                     'completed': completed_quizzes,
                     'percentage': round((completed_quizzes / total_quizzes * 100) if total_quizzes > 0 else 0, 1)
                 }
+                
+                enrollments.append(enrollment)
             
-            # 获取测验尝试次数
+            context['enrolled_courses'] = enrollments
+            
+            # Get quiz attempts count
             context['quiz_attempts'] = getattr(user, 'quiz_attempts', []).count() if hasattr(user, 'quiz_attempts') else 0
-            # 获取学习推荐
+            # Get learning recommendations
             context['recommendations'] = getattr(user, 'learning_recommendations', []).filter(is_read=False)[:5] if hasattr(user, 'learning_recommendations') else []
             
-            # 获取平均测验得分
+            # Get average quiz score
             try:
                 quiz_attempts = QuizAttempt.objects.filter(student=user, is_completed=True)
                 if quiz_attempts.exists():
                     total_score = sum(attempt.score for attempt in quiz_attempts)
                     average_score = total_score / quiz_attempts.count()
                     context['average_quiz_score'] = round(average_score, 1)
-                    # 获取最近的测验尝试
+                    # Get latest quiz attempt
                     context['latest_quiz_attempt'] = quiz_attempts.order_by('-completed_at').first()
                 else:
                     context['average_quiz_score'] = 0
@@ -89,18 +108,18 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 print(f"Error calculating quiz scores: {e}")
             
         elif user.is_teacher():
-            # 获取教师教授的课程
-            # 确保courses_taught是QuerySet对象
+            # Get courses taught by the teacher
+            # Ensure courses_taught is a QuerySet
             courses = user.courses_taught.all()
             context['courses_taught'] = courses
             
-            # 获取学生总数
+            # Get total number of students
             total_students = 0
             for course in courses:
                 total_students += course.students.count()
             context['total_students'] = total_students
             
-            # 获取待评阅的作业数量
+            # Get number of pending submissions
             try:
                 pending_submissions = Submission.objects.filter(
                     assignment__course__instructor=user,
