@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Quiz Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quiz-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+        margin-bottom: 20px;
+    }
+    
+    .quiz-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quiz-stats {
+        font-size: 0.85rem;
+    }
+    
+    .status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .course-badge {
+        font-size: 0.8rem;
+        background-color: #e9ecef;
+        color: #495057;
+        padding: 5px 10px;
+        border-radius: 20px;
+        margin-bottom: 10px;
+        display: inline-block;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>My Quiz Management</h2>
+            <p class="text-muted">Manage all your created quizzes and check student participation</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'quizzes:quiz_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Create New Quiz
+            </a>
+        </div>
+    </div>
+    
+    <!-- Quiz List -->
+    <div class="row">
+        {% if quizzes %}
+            {% for quiz in quizzes %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card quiz-card h-100">
+                    {% if quiz.is_published %}
+                    <span class="badge bg-success status-badge">Published</span>
+                    {% else %}
+                    <span class="badge bg-secondary status-badge">Draft</span>
+                    {% endif %}
+                    
+                    <div class="card-body">
+                        <span class="course-badge">
+                            <i class="fas fa-book"></i> {{ quiz.course.title }}
+                        </span>
+                        <h5 class="card-title">{{ quiz.title }}</h5>
+                        <p class="card-text">{{ quiz.description|truncatechars:100 }}</p>
+                        
+                        <div class="quiz-stats d-flex justify-content-between text-muted mb-3">
+                            <span><i class="fas fa-users"></i> {{ quiz.attempts.count }} participants</span>
+                            <span><i class="fas fa-clock"></i> {{ quiz.time_limit }} minutes</span>
+                        </div>
+                        
+                        <div class="quiz-stats d-flex justify-content-between text-muted mb-3">
+                            <span>
+                                <i class="fas fa-calendar-alt"></i> 
+                                {% if quiz.start_time %}
+                                {{ quiz.start_time|date:"Y-m-d" }}
+                                {% else %}
+                                No start limit
+                                {% endif %}
+                            </span>
+                            <span>
+                                <i class="fas fa-calendar-check"></i> 
+                                {% if quiz.end_time %}
+                                {{ quiz.end_time|date:"Y-m-d" }}
+                                {% else %}
+                                No end limit
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                            <a href="{% url 'quizzes:quiz_edit' quiz.id %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h4>You haven't created any quizzes yet</h4>
+                <p class="text-muted">Click the "Create New Quiz" button to start creating your first quiz.</p>
+                <a href="{% url 'quizzes:quiz_create' %}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus-circle"></i> Create New Quiz
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

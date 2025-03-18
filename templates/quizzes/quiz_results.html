@@ -27,16 +27,9 @@
                 <div class="card-body">
                     <div class="result-summary text-center mb-4">
                         <div class="score-display">
-                            <h1 class="display-1 {% if passed %}text-success{% else %}text-danger{% endif %}">
+                            <h1 class="display-1 text-primary">
                                 {{ attempt.score|floatformat:1 }}%
                             </h1>
-                            <p class="lead">
-                                {% if passed %}
-                                <span class="badge bg-success">通过</span>
-                                {% else %}
-                                <span class="badge bg-danger">未通过</span>
-                                {% endif %}
-                            </p>
                         </div>
                         <div class="stats mt-3">
                             <p>正确答案: <strong>{{ correct_answers }}/{{ total_questions }}</strong></p>

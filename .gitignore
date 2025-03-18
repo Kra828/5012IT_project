@@ -16,6 +16,7 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -43,13 +44,18 @@ env/
 
 # Environment variables
 .env
+.env.local
 
 # Media files
 media/
 
-# Database backups
-*.dump
-*.sql
+# Database
+*.sqlite3
+*.db
+
+# Backup files
+*.bak
+*.backup
 
 # macOS
 .DS_Store

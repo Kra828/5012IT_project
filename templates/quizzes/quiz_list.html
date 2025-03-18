@@ -1,58 +1,264 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}测验列表{% endblock %}
+{% block title %}Available Quizzes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quiz-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+        margin-bottom: 20px;
+    }
+    
+    .quiz-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quiz-stats {
+        font-size: 0.85rem;
+    }
+    
+    .status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    
+    .course-badge {
+        font-size: 0.8rem;
+        background-color: #e9ecef;
+        color: #495057;
+        padding: 5px 10px;
+        border-radius: 20px;
+        margin-bottom: 10px;
+        display: inline-block;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+    
+    .status-available {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+    
+    .status-upcoming {
+        background-color: #fff3cd;
+        color: #664d03;
+    }
+    
+    .status-expired {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    
+    .status-completed {
+        background-color: #e2e3e5;
+        color: #41464b;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container my-4">
     <div class="row mb-4">
-        <div class="col-12">
-            <h1>测验列表</h1>
-            <p class="lead">查看您可以参加的所有测验</p>
+        <div class="col-md-8">
+            <h2>Available Quizzes</h2>
+            <p class="text-muted">View quizzes you can take and your completed quiz records</p>
         </div>
     </div>
-
-    <div class="row">
-        {% if quizzes %}
+    
+    <!-- Filters -->
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="list-group list-group-flush">
-                    {% for quiz in quizzes %}
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">
-                                <a href="{% url 'quizzes:quiz_detail' quiz.id %}">{{ quiz.title }}</a>
-                                {% if quiz.id in completed_quizzes %}
-                                <span class="badge bg-success ms-2">已完成</span>
-                                {% endif %}
-                            </h5>
-                            <small>{{ quiz.questions.count }} 个问题</small>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="course" class="form-label">Filter by Course</label>
+                            <select class="form-select" id="course" name="course">
+                                <option value="">All Courses</option>
+                                {% for course in enrolled_courses %}
+                                <option value="{{ course.id }}" {% if request.GET.course|add:"0" == course.id %}selected{% endif %}>{{ course.title }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <p class="mb-1">{{ quiz.description|truncatechars:150 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <small class="text-muted">
-                                <i class="fas fa-book"></i> 课程: <a href="{% url 'courses:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a>
-                                {% if quiz.time_limit > 0 %}
-                                <i class="fas fa-clock ms-2"></i> {{ quiz.time_limit }} 分钟
-                                {% else %}
-                                <i class="fas fa-clock ms-2"></i> 无时间限制
-                                {% endif %}
-                                <i class="fas fa-award ms-2"></i> 及格分数: {{ quiz.passing_score }}%
-                            </small>
-                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="available" {% if request.GET.status == 'available' %}selected{% endif %}>Available</option>
+                                <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="upcoming" {% if request.GET.status == 'upcoming' %}selected{% endif %}>Upcoming</option>
+                            </select>
                         </div>
-                    </div>
-                    {% endfor %}
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter"></i> Apply Filters
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Quiz List -->
+    <div class="row">
+        {% if quizzes %}
+            {% for quiz in quizzes %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card quiz-card h-100">
+                    {% if quiz.status == 'available' %}
+                    <span class="badge status-available status-badge">Available</span>
+                    {% elif quiz.status == 'upcoming' %}
+                    <span class="badge status-upcoming status-badge">Upcoming</span>
+                    {% elif quiz.status == 'expired' %}
+                    <span class="badge status-expired status-badge">Expired</span>
+                    {% elif quiz.status == 'completed' %}
+                    <span class="badge status-completed status-badge">Completed</span>
+                    {% endif %}
+                    
+                    <div class="card-body">
+                        <span class="course-badge">
+                            <i class="fas fa-book"></i> {{ quiz.course.title }}
+                        </span>
+                        <h5 class="card-title">{{ quiz.title }}</h5>
+                        <p class="card-text">{{ quiz.description|truncatechars:100 }}</p>
+                        
+                        <div class="quiz-stats d-flex justify-content-between text-muted mb-3">
+                            <span><i class="fas fa-question-circle"></i> 5 questions</span>
+                            <span><i class="fas fa-clock"></i> {{ quiz.time_limit }} minutes</span>
+                        </div>
+                        
+                        <div class="quiz-stats d-flex justify-content-between text-muted mb-3">
+                            {% if quiz.start_time %}
+                            <span><i class="fas fa-calendar-alt"></i> {{ quiz.start_time|date:"Y-m-d H:i" }}</span>
+                            {% else %}
+                            <span><i class="fas fa-calendar-alt"></i> No start limit</span>
+                            {% endif %}
+                            
+                            {% if quiz.end_time %}
+                            <span><i class="fas fa-calendar-check"></i> {{ quiz.end_time|date:"Y-m-d H:i" }}</span>
+                            {% else %}
+                            <span><i class="fas fa-calendar-check"></i> No end limit</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if quiz.status == 'completed' and quiz.attempt %}
+                        <div class="alert alert-info mb-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Score: <strong>{{ quiz.attempt.score }}%</strong></span>
+                                <span>{{ quiz.attempt.completed_at|date:"Y-m-d H:i" }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <div class="d-grid">
+                            {% if quiz.status == 'available' %}
+                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-success">
+                                <i class="fas fa-play-circle"></i> Take Quiz
+                            </a>
+                            {% elif quiz.status == 'upcoming' %}
+                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-warning">
+                                <i class="fas fa-clock"></i> View Details
+                            </a>
+                            {% elif quiz.status == 'completed' %}
+                            <a href="{% url 'quizzes:quiz_result' quiz.attempt.id %}" class="btn btn-primary">
+                                <i class="fas fa-chart-bar"></i> View Results
+                            </a>
+                            {% else %}
+                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-secondary">
+                                <i class="fas fa-info-circle"></i> View Details
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         {% else %}
         <div class="col-12">
-            <div class="alert alert-info">
-                您目前没有可以参加的测验。请先注册相关课程。
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h4>No quizzes found matching your criteria</h4>
+                <p class="text-muted">
+                    {% if enrolled_courses %}
+                    There are currently no available quizzes in your courses. Please check back later or browse other courses.
+                    {% else %}
+                    You haven't enrolled in any courses yet. Please enroll in a course to take quizzes.
+                    {% endif %}
+                </p>
+                <a href="{% url 'courses:course_list' %}" class="btn btn-primary mt-3">
+                    <i class="fas fa-book"></i> Browse Courses
+                </a>
             </div>
         </div>
         {% endif %}
     </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.course %}&course={{ request.GET.course }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.course %}&course={{ request.GET.course }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.course %}&course={{ request.GET.course }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.course %}&course={{ request.GET.course }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.course %}&course={{ request.GET.course }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

@@ -34,6 +34,11 @@ class CourseDetailView(DetailView):
         course = self.get_object()
         context['chapters'] = course.chapters.all().order_by('order')
         
+        # 添加最近发布的课程供相关课程使用
+        context['recent_courses'] = Course.objects.filter(
+            is_published=True
+        ).exclude(id=course.id).order_by('-created_at')[:5]
+        
         # 所有学生都被视为已注册
         if self.request.user.is_authenticated and self.request.user.is_student():
             context['is_enrolled'] = True

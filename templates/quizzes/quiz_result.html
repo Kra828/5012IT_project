@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load quiz_extras %}
+
+{% block title %}Quiz Result - {{ attempt.quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-header {
+        padding: 30px 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        background-color: #f8f9fa;
+        border-left: 5px solid #0d6efd;
+    }
+    
+    .score-display {
+        font-size: 4rem;
+        font-weight: 700;
+    }
+    
+    .question-container {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-left: 5px solid #6c757d;
+    }
+    
+    .question-text {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 15px;
+    }
+    
+    .option-container {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    
+    .option-container.correct {
+        background-color: rgba(25, 135, 84, 0.1);
+        border-left: 3px solid #198754;
+    }
+    
+    .option-container.incorrect {
+        background-color: rgba(220, 53, 69, 0.1);
+        border-left: 3px solid #dc3545;
+    }
+    
+    .option-container.selected {
+        background-color: rgba(13, 110, 253, 0.1);
+        border-left: 3px solid #0d6efd;
+    }
+    
+    .option-container.selected.correct {
+        background-color: rgba(25, 135, 84, 0.1);
+        border-left: 3px solid #198754;
+    }
+    
+    .result-icon {
+        font-size: 1.2rem;
+        margin-right: 10px;
+    }
+    
+    .completion-time {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}">{{ attempt.quiz.course.title }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_list' %}">Quiz List</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}">{{ attempt.quiz.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Quiz Result</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Result summary -->
+            <div class="result-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6 text-center text-md-start">
+                        <h3 class="mb-2">{{ attempt.quiz.title }}</h3>
+                        <p class="mb-1">Completed at: {{ attempt.completed_at|date:"Y-m-d H:i" }}</p>
+                        <p class="mb-1 completion-time">
+                            Time spent: 
+                            {% with time_spent=attempt.get_time_spent %}
+                            {% if time_spent.hours > 0 %}
+                            {{ time_spent.hours }} hours
+                            {% endif %}
+                            {% if time_spent.minutes > 0 %}
+                            {{ time_spent.minutes }} minutes
+                            {% endif %}
+                            {{ time_spent.seconds }} seconds
+                            {% endwith %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <div class="score-display text-primary">{{ attempt.score }}%</div>
+                        <p class="mb-0">Correct answers: {{ correct_answers }} / {{ total_questions }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Question review -->
+            <h4 class="mb-4">Question Review</h4>
+            
+            {% for answer in answers %}
+            <div class="question-container">
+                <div class="question-text">
+                    <span class="badge bg-primary me-2">{{ forloop.counter }}</span>
+                    {{ answer.question.question_text }}
+                </div>
+                
+                <div class="options">
+                    {% for choice in answer.question.choices.all %}
+                    <div class="option-container 
+                        {% if choice.is_correct %}correct{% endif %}
+                        {% if choice == answer.selected_choice %}selected{% endif %}">
+                        <div class="d-flex align-items-center">
+                            {% if choice.is_correct %}
+                            <span class="result-icon text-success"><i class="fas fa-check-circle"></i></span>
+                            {% elif choice == answer.selected_choice and not choice.is_correct %}
+                            <span class="result-icon text-danger"><i class="fas fa-times-circle"></i></span>
+                            {% endif %}
+                            
+                            <div>
+                                {{ choice.choice_text }}
+                                {% if choice.is_correct %}
+                                <small class="text-success d-block">(Correct answer)</small>
+                                {% elif choice == answer.selected_choice and not choice.is_correct %}
+                                <small class="text-danger d-block">(Your choice)</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Return buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                <a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Quiz Details
+                </a>
+                <a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}" class="btn btn-outline-primary">
+                    <i class="fas fa-book"></i> Back to Course
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Smooth scroll to top
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+        
+        // Animate score display
+        const scoreDisplay = document.querySelector('.score-display');
+        const targetScore = parseInt(scoreDisplay.textContent);
+        let currentScore = 0;
+        
+        const animateScore = () => {
+            if (currentScore < targetScore) {
+                currentScore += 1;
+                scoreDisplay.textContent = currentScore + '%';
+                requestAnimationFrame(animateScore);
+            } else {
+                scoreDisplay.textContent = targetScore + '%';
+            }
+        };
+        
+        scoreDisplay.textContent = '0%';
+        setTimeout(animateScore, 500);
+    });
+</script>
+{% endblock %}

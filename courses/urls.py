@@ -28,9 +28,10 @@ urlpatterns = [
     
     # 教师课程管理
     path('manage/', views.TeacherCourseListView.as_view(), name='teacher_course_list'),
-    path('manage/create/', views.CourseCreateView.as_view(), name='course_create'),
+    # 仅管理员可以创建和删除课程
+    # path('manage/create/', views.CourseCreateView.as_view(), name='course_create'),
     path('manage/<slug:slug>/update/', views.CourseUpdateView.as_view(), name='course_update'),
-    path('manage/<slug:slug>/delete/', views.CourseDeleteView.as_view(), name='course_delete'),
+    # path('manage/<slug:slug>/delete/', views.CourseDeleteView.as_view(), name='course_delete'),
     
     # 章节管理
     path('<slug:course_slug>/chapters/create/', views.ChapterCreateView.as_view(), name='chapter_create'),

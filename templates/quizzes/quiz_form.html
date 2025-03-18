@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+  {% if is_create %}创建新测验{% else %}编辑测验{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-container {
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid #6c757d;
+    }
+    
+    .option-container {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #fff;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .correct-toggle {
+        cursor: pointer;
+    }
+    
+    .correct-toggle.active {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+    
+    .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .form-check-input {
+        margin-top: 0.3rem;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:teacher_quiz_list' %}">测验管理</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {% if is_create %}创建新测验{% else %}编辑测验{% endif %}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{% if is_create %}创建新测验{% else %}编辑测验 "{{ quiz.title }}"{% endif %}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="quiz-form">
+                        {% csrf_token %}
+                        
+                        <!-- 基本信息 -->
+                        <div class="alert alert-info mb-4">
+                            <h5><i class="fas fa-info-circle"></i> 测验创建指南</h5>
+                            <ul class="mb-0">
+                                <li>填写测验的基本信息，包括标题、描述和所属课程</li>
+                                <li>创建5个多选题，每个问题必须填写</li>
+                                <li>每个问题必须有4个选项，并至少标记一个正确答案</li>
+                                <li>设置测验的开始和结束时间（可选）</li>
+                                <li>是否立即发布测验</li>
+                            </ul>
+                        </div>
+
+                        <h5 class="mb-3">测验基本信息</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_title" class="form-label">测验标题</label>
+                                    {{ form.title.errors }}
+                                    <input type="text" name="title" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
+                                        id="id_title" placeholder="请输入测验标题" 
+                                        value="{% if form.title.value %}{{ form.title.value }}{% endif %}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_course" class="form-label">所属课程</label>
+                                    {{ form.course.errors }}
+                                    <select name="course" class="form-select {% if form.course.errors %}is-invalid{% endif %}" 
+                                        id="id_course" required>
+                                        <option value="">-- 选择课程 --</option>
+                                        {% for course in courses %}
+                                        <option value="{{ course.id }}" 
+                                            {% if form.course.value|stringformat:"i" == course.id|stringformat:"i" %}selected{% endif %}>
+                                            {{ course.title }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="id_description" class="form-label">测验描述</label>
+                                    {{ form.description.errors }}
+                                    <textarea name="description" class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                        id="id_description" rows="3" placeholder="请输入测验描述">{% if form.description.value %}{{ form.description.value }}{% endif %}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_time_limit" class="form-label">时间限制（分钟）</label>
+                                    {{ form.time_limit.errors }}
+                                    <input type="number" name="time_limit" class="form-control {% if form.time_limit.errors %}is-invalid{% endif %}" 
+                                        id="id_time_limit" placeholder="0表示无限制" min="0" 
+                                        value="{% if form.time_limit.value %}{{ form.time_limit.value }}{% endif %}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_start_time" class="form-label">开始时间</label>
+                                    {{ form.start_time.errors }}
+                                    <input type="datetime-local" name="start_time" class="form-control {% if form.start_time.errors %}is-invalid{% endif %}" 
+                                        id="id_start_time" 
+                                        value="{% if form.start_time.value %}{{ form.start_time.value|date:'Y-m-d\TH:i' }}{% endif %}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_end_time" class="form-label">结束时间</label>
+                                    {{ form.end_time.errors }}
+                                    <input type="datetime-local" name="end_time" class="form-control {% if form.end_time.errors %}is-invalid{% endif %}" 
+                                        id="id_end_time" 
+                                        value="{% if form.end_time.value %}{{ form.end_time.value|date:'Y-m-d\TH:i' }}{% endif %}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input type="checkbox" name="is_published" class="form-check-input" id="id_is_published" 
+                                    {% if form.is_published.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_is_published">
+                                    立即发布测验
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <!-- 问题部分 -->
+                        <h5 class="mb-3">测验问题（5个多选题）</h5>
+                        
+                        {% for i in '12345' %}
+                        <div class="question-container" id="question-{{ forloop.counter }}">
+                            <div class="question-header">
+                                <h5>问题 {{ forloop.counter }}</h5>
+                                <span class="badge bg-secondary">多选题</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="question_{{ forloop.counter }}" class="form-label">问题内容</label>
+                                <textarea 
+                                    name="question_{{ forloop.counter }}" 
+                                    id="question_{{ forloop.counter }}" 
+                                    class="form-control" 
+                                    rows="2" 
+                                    placeholder="请输入问题内容" 
+                                    required
+                                >{% if not is_create %}{% for question in questions %}{% if question.question_number == forloop.parentloop.counter %}{{ question.question_text }}{% endif %}{% endfor %}{% endif %}</textarea>
+                            </div>
+                            
+                            {% for j in '1234' %}
+                            <div class="option-container" id="question-{{ forloop.parentloop.counter }}-option-{{ forloop.counter }}">
+                                <div class="row">
+                                    <div class="col-auto d-flex align-items-center">
+                                        <div class="form-check">
+                                            <input 
+                                                type="checkbox" 
+                                                class="form-check-input" 
+                                                id="question_{{ forloop.parentloop.counter }}_correct_{{ forloop.counter }}" 
+                                                name="question_{{ forloop.parentloop.counter }}_correct_{{ forloop.counter }}"
+                                                {% if not is_create %}
+                                                    {% for question in questions %}
+                                                        {% if question.question_number == forloop.parentloop.parentloop.counter %}
+                                                            {% for choice in question.choices.all %}
+                                                                {% if choice.choice_number == forloop.parentloop.counter and choice.is_correct %}
+                                                                    checked
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                            >
+                                            <label class="form-check-label" for="question_{{ forloop.parentloop.counter }}_correct_{{ forloop.counter }}">
+                                                正确答案
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            id="question_{{ forloop.parentloop.counter }}_choice_{{ forloop.counter }}" 
+                                            name="question_{{ forloop.parentloop.counter }}_choice_{{ forloop.counter }}" 
+                                            placeholder="选项 {{ forloop.counter }} 内容" 
+                                            required
+                                            value="{% if not is_create %}{% for question in questions %}{% if question.question_number == forloop.parentloop.parentloop.counter %}{% for choice in question.choices.all %}{% if choice.choice_number == forloop.parentloop.counter %}{{ choice.choice_text }}{% endif %}{% endfor %}{% endif %}{% endfor %}{% endif %}"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'quizzes:teacher_quiz_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {% if is_create %}创建测验{% else %}保存更改{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 表单验证
+        document.getElementById('quiz-form').addEventListener('submit', function(event) {
+            let isValid = true;
+            
+            // 检查每个问题是否有至少一个正确答案
+            for (let i = 1; i <= 5; i++) {
+                let hasCorrect = false;
+                for (let j = 1; j <= 4; j++) {
+                    if (document.getElementById(`question_${i}_correct_${j}`).checked) {
+                        hasCorrect = true;
+                        break;
+                    }
+                }
+                
+                if (!hasCorrect) {
+                    alert(`问题 ${i} 必须标记至少一个正确答案！`);
+                    event.preventDefault();
+                    isValid = false;
+                    break;
+                }
+            }
+            
+            return isValid;
+        });
+        
+        // 正确答案高亮显示
+        const correctCheckboxes = document.querySelectorAll('input[type="checkbox"][name^="question_"][name$="_correct"]');
+        correctCheckboxes.forEach(checkbox => {
+            const updateContainer = () => {
+                const container = checkbox.closest('.option-container');
+                if (checkbox.checked) {
+                    container.classList.add('active');
+                    container.style.backgroundColor = '#d4edda';
+                    container.style.borderColor = '#c3e6cb';
+                } else {
+                    container.classList.remove('active');
+                    container.style.backgroundColor = '#fff';
+                    container.style.borderColor = '#dee2e6';
+                }
+            };
+            
+            updateContainer(); // 初始化
+            checkbox.addEventListener('change', updateContainer);
+        });
+    });
+</script>
+{% endblock %} 

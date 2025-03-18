@@ -38,6 +38,8 @@
                     <h5 class="mb-0">Course Quizzes</h5>
                     {% if request.user == course.instructor %}
                     <a href="{% url 'quizzes:teacher_quiz_list' %}" class="btn btn-sm btn-outline-primary">Manage Quizzes</a>
+                    {% else %}
+                    <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-sm btn-outline-primary">View All Quizzes</a>
                     {% endif %}
                 </div>
                 <div class="card-body">
@@ -58,11 +60,10 @@
                                     {% else %}
                                     <i class="fas fa-clock"></i> No time limit
                                     {% endif %}
-                                    <i class="fas fa-award ms-2"></i> Passing score: {{ quiz.passing_score }}%
                                 </small>
                             </p>
-                            {% if is_enrolled and quiz.is_published %}
-                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-sm btn-outline-success mt-2">Take Quiz</a>
+                            {% if quiz.is_published %}
+                            <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-sm btn-outline-success mt-2">View Quiz</a>
                             {% elif request.user == course.instructor %}
                             <a href="{% url 'quizzes:quiz_detail' quiz.id %}" class="btn btn-sm btn-outline-secondary mt-2">View Quiz</a>
                             {% if not quiz.is_published %}
@@ -136,8 +137,20 @@
                         </a>
                         {% endif %}
                         
+                        <a href="{% url 'courses:course_detail' course.slug %}" class="btn btn-outline-primary">
+                            <i class="fas fa-book"></i> Course Details
+                        </a>
+                        
+                        <a href="{% url 'quizzes:quiz_list' %}?course={{ course.id }}" class="btn btn-outline-info mt-2">
+                            <i class="fas fa-question-circle"></i> Quiz
+                        </a>
+                        
+                        <a href="{% url 'courses:course_files' course.slug %}" class="btn btn-outline-secondary mt-2">
+                            <i class="fas fa-file"></i> Files
+                        </a>
+                        
                         {% if request.user == course.instructor %}
-                        <a href="{% url 'courses:course_update' course.slug %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'courses:course_update' course.slug %}" class="btn btn-outline-secondary mt-2">
                             <i class="fas fa-edit"></i> Edit Course
                         </a>
                         {% endif %}
@@ -151,7 +164,7 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        {% for related_course in course.category.courses.all|slice:":3" %}
+                        {% for related_course in recent_courses|slice:":3" %}
                         {% if related_course != course %}
                         <a href="{% url 'courses:course_detail' related_course.slug %}" class="list-group-item list-group-item-action">
                             {{ related_course.title }}

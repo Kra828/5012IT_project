@@ -53,7 +53,16 @@ class Course(models.Model):
             
             self.slug = slug
         
+        # 保存课程
         super().save(*args, **kwargs)
+        
+        # 为课程创建讨论板（如果不存在）
+        from forum.models import DiscussionBoard
+        if not hasattr(self, 'discussion_board'):
+            DiscussionBoard.objects.create(
+                course=self,
+                description=f"讨论区：{self.title}"
+            )
     
     def __str__(self):
         return self.title
@@ -61,6 +70,31 @@ class Course(models.Model):
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse('courses:course_detail', args=[self.slug])
+    
+    def delete(self, *args, **kwargs):
+        """重写删除方法，安全处理级联删除"""
+        try:
+            # 直接删除关联的讨论板
+            if hasattr(self, 'discussion_board'):
+                self.discussion_board.delete()
+            
+            # 删除课程相关的测验
+            for quiz in self.quizzes.all():
+                try:
+                    quiz.delete()
+                except Exception:
+                    pass
+                    
+            # 调用父类的删除方法
+            super().delete(*args, **kwargs)
+        except Exception as e:
+            # 记录错误并继续
+            from django.db import connection
+            connection.set_rollback(True)
+            # 强制删除课程
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute(f"DELETE FROM courses_course WHERE id = {self.id}")
 
 class Chapter(models.Model):
     """课程章节模型"""

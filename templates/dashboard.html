@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load account_filters %}
 
 {% block title %}Dashboard - Online Learning Platform{% endblock %}
 
@@ -65,21 +66,109 @@
                     <!-- Student Dashboard -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h5 class="mb-0">Learning Progress Overview</h5>
+                            <h5 class="mb-0">Student Profile</h5>
                         </div>
                         <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-md-4">
-                                    <div class="display-4">{{ enrolled_courses|default:"0" }}</div>
-                                    <p>Enrolled Courses</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-user me-2"></i>Personal Information</h6>
+                                    <hr>
+                                    <p><strong>Full Name:</strong> {{ user.get_full_name|default:"Not provided" }}</p>
+                                    <p><strong>Username:</strong> {{ user.username }}</p>
+                                    <p><strong>Email:</strong> {{ user.email }}</p>
+                                    {% if user.date_of_birth %}
+                                    <p><strong>Date of Birth:</strong> {{ user.date_of_birth|date:"Y-m-d" }}</p>
+                                    {% endif %}
+                                    {% if user.student_id %}
+                                    <p><strong>Student ID:</strong> {{ user.student_id }}</p>
+                                    {% endif %}
+                                    
+                                    <!-- 编辑个人信息按钮 -->
+                                    <div class="mt-3">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                                            <i class="fas fa-edit me-1"></i> Edit Profile
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- 编辑个人信息模态框 -->
+                                    <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form method="post" action="{% url 'accounts:update_profile' %}" enctype="multipart/form-data">
+                                                    {% csrf_token %}
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="editProfileModalLabel">Edit Profile Information</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label for="id_first_name" class="form-label">First Name</label>
+                                                            <input type="text" class="form-control" id="id_first_name" name="first_name" value="{{ user.first_name }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_last_name" class="form-label">Last Name</label>
+                                                            <input type="text" class="form-control" id="id_last_name" name="last_name" value="{{ user.last_name }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_username" class="form-label">Username</label>
+                                                            <input type="text" class="form-control" id="id_username" name="username" value="{{ user.username }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_email" class="form-label">Email Address</label>
+                                                            <input type="email" class="form-control" id="id_email" name="email" value="{{ user.email }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_date_of_birth" class="form-label">Date of Birth</label>
+                                                            <input type="date" class="form-control" id="id_date_of_birth" name="date_of_birth" value="{{ user.date_of_birth|date:'Y-m-d' }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_bio" class="form-label">Biography</label>
+                                                            <textarea class="form-control" id="id_bio" name="bio" rows="3">{{ user.bio }}</textarea>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="id_profile_picture" class="form-label">Profile Picture</label>
+                                                            <input type="file" class="form-control" id="id_profile_picture" name="profile_picture">
+                                                            {% if user.profile_picture %}
+                                                            <div class="form-text">Current: {{ user.profile_picture.name }}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                        {% if user.is_student %}
+                                                        <div class="mb-3">
+                                                            <label for="id_student_id" class="form-label">Student ID</label>
+                                                            <input type="text" class="form-control" id="id_student_id" name="student_id" value="{{ user.student_id }}">
+                                                        </div>
+                                                        {% endif %}
+                                                        {% if user.is_teacher %}
+                                                        <div class="mb-3">
+                                                            <label for="id_specialization" class="form-label">Specialization</label>
+                                                            <input type="text" class="form-control" id="id_specialization" name="specialization" value="{{ user.specialization }}">
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="display-4">{{ completed_lessons|default:"0" }}</div>
-                                    <p>Completed Lessons</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="display-4">{{ quiz_attempts|default:"0" }}</div>
-                                    <p>Quiz Attempts</p>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-chart-bar me-2"></i>Quiz Performance</h6>
+                                    <hr>
+                                    <p><strong>Total Quiz Attempts:</strong> {{ quiz_attempts|default:"0" }}</p>
+                                    <p><strong>Average Quiz Score:</strong> {{ average_quiz_score|default:"0" }}%</p>
+                                    {% if latest_quiz_attempt %}
+                                    <p><strong>Last Quiz:</strong> {{ latest_quiz_attempt.quiz.title }}</p>
+                                    <p><strong>Last Quiz Score:</strong> {{ latest_quiz_attempt.score }}%</p>
+                                    <p><strong>Completed on:</strong> {{ latest_quiz_attempt.completed_at|date:"Y-m-d H:i" }}</p>
+                                    {% endif %}
+                                    <div class="mt-3">
+                                        <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-question-circle me-1"></i> View All Quizzes
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -112,7 +201,13 @@
                                                         Instructor: {{ enrollment.course.instructor.get_full_name|default:enrollment.course.instructor.username }}
                                                     </p>
                                                     <div class="progress mb-2">
-                                                        <div class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+                                                        <div class="progress-bar" role="progressbar" 
+                                                             style="width: {{ enrollment.quiz_progress.percentage }}%;" 
+                                                             aria-valuenow="{{ enrollment.quiz_progress.percentage }}" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            {{ enrollment.quiz_progress.completed }}/{{ enrollment.quiz_progress.total }} Quizzes
+                                                        </div>
                                                     </div>
                                                     <a href="{% url 'courses:course_detail' enrollment.course.slug %}" class="btn btn-sm btn-primary">
                                                         Continue Learning
@@ -174,8 +269,8 @@
                         <div class="card-body">
                             <div class="row text-center">
                                 <div class="col-md-4">
-                                    <div class="display-4">{{ courses_taught|default:"0" }}</div>
-                                    <p>Created Courses</p>
+                                    <div class="display-4">{{ courses_taught.count|default:"0" }}</div>
+                                    <p>Assigned Courses</p>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="display-4">{{ total_students|default:"0" }}</div>
@@ -191,11 +286,8 @@
 
                     <!-- My Courses -->
                     <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">My Courses</h5>
-                            <a href="{% url 'courses:course_create' %}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-plus-circle"></i> Create New Course
-                            </a>
+                        <div class="card-header">
+                            <h5 class="mb-0">My Assigned Courses</h5>
                         </div>
                         <div class="card-body">
                             {% if courses_taught %}
@@ -204,7 +296,6 @@
                                         <thead>
                                             <tr>
                                                 <th>Course Name</th>
-                                                <th>Category</th>
                                                 <th>Students</th>
                                                 <th>Status</th>
                                                 <th>Actions</th>
@@ -218,7 +309,6 @@
                                                             {{ course.title }}
                                                         </a>
                                                     </td>
-                                                    <td>{{ course.category.name }}</td>
                                                     <td>{{ course.students.count }}</td>
                                                     <td>
                                                         {% if course.is_published %}
@@ -229,11 +319,17 @@
                                                     </td>
                                                     <td>
                                                         <div class="btn-group btn-group-sm">
-                                                            <a href="{% url 'courses:course_update' course.slug %}" class="btn btn-outline-primary">
+                                                            <a href="{% url 'courses:course_update' course.slug %}" class="btn btn-outline-primary" title="Edit Course">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
-                                                            <a href="{% url 'courses:chapter_list' course.slug %}" class="btn btn-outline-info">
+                                                            <a href="{% url 'courses:chapter_list' course.slug %}" class="btn btn-outline-info" title="Manage Content">
                                                                 <i class="fas fa-list"></i>
+                                                            </a>
+                                                            <a href="{% url 'courses:course_files' course.slug %}" class="btn btn-outline-secondary" title="Upload Materials">
+                                                                <i class="fas fa-file-upload"></i>
+                                                            </a>
+                                                            <a href="{% url 'quizzes:quiz_create' %}?course={{ course.id }}" class="btn btn-outline-success" title="Create Quiz">
+                                                                <i class="fas fa-question-circle"></i>
                                                             </a>
                                                         </div>
                                                     </td>
@@ -247,11 +343,8 @@
                                     <div class="display-1 text-muted mb-3">
                                         <i class="fas fa-book"></i>
                                     </div>
-                                    <h4>You haven't created any courses yet</h4>
-                                    <p>Create your first course to start your teaching journey.</p>
-                                    <a href="{% url 'courses:course_create' %}" class="btn btn-primary">
-                                        Create Course
-                                    </a>
+                                    <h4>You haven't been assigned as an instructor for any courses yet</h4>
+                                    <p>Please contact the administrator to be assigned to courses.</p>
                                 </div>
                             {% endif %}
                         </div>

@@ -1,7 +1,77 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ attempt.quiz.title }} - 测验{% endblock %}
+{% block title %}Taking Quiz - {{ quiz.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-container {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-left: 5px solid #0d6efd;
+        display: none; /* Hide all questions by default */
+    }
+    
+    .question-container.active {
+        display: block; /* Only show active question */
+    }
+    
+    .question-text {
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 15px;
+    }
+    
+    .option-container {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+    }
+    
+    .option-container:hover {
+        background-color: #e9ecef;
+    }
+    
+    .option-input {
+        margin-right: 10px;
+    }
+    
+    .timer-container {
+        position: sticky;
+        top: 70px;
+        z-index: 1000;
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .timer-warning {
+        color: #dc3545;
+        animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .progress-container {
+        margin-bottom: 15px;
+    }
+    
+    .navigation-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -9,123 +79,260 @@
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' attempt.quiz.course.slug %}">{{ attempt.quiz.course.title }}</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_detail' attempt.quiz.id %}">{{ attempt.quiz.title }}</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">测验</li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_list' %}">Quiz List</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_detail' quiz.id %}">{{ quiz.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Taking Quiz</li>
                 </ol>
             </nav>
         </div>
     </div>
-
+    
     <div class="row">
         <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">{{ attempt.quiz.title }}</h4>
-                    {% if attempt.quiz.time_limit > 0 %}
-                    <div id="timer" class="bg-light text-dark px-3 py-1 rounded">
-                        <i class="fas fa-clock"></i> <span id="time-remaining">{{ attempt.quiz.time_limit }}:00</span>
-                    </div>
-                    {% endif %}
+            <!-- Title and description -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">{{ quiz.title }}</h3>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{% url 'quizzes:submit_quiz' attempt.quiz.id attempt.id %}" id="quiz-form">
-                        {% csrf_token %}
-                        
-                        {% for question in questions %}
-                        <div class="question-container mb-4 p-3 border rounded {% if forloop.counter > 1 %}mt-5{% endif %}">
-                            <h5 class="question-number">问题 {{ forloop.counter }}/{{ questions|length }}</h5>
-                            <div class="question-text mb-3">
-                                {{ question.question_text|safe }}
-                            </div>
-                            
-                            {% if question.question_type == 'multiple_choice' %}
-                            <div class="choices">
-                                {% for choice in question.choices.all %}
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="question_{{ question.id }}" value="{{ choice.id }}" id="choice_{{ choice.id }}">
-                                    <label class="form-check-label" for="choice_{{ choice.id }}">
-                                        {{ choice.choice_text }}
-                                    </label>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            {% elif question.question_type == 'true_false' %}
-                            <div class="choices">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" value="true" id="true_{{ question.id }}">
-                                    <label class="form-check-label" for="true_{{ question.id }}">
-                                        正确
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="question_{{ question.id }}" value="false" id="false_{{ question.id }}">
-                                    <label class="form-check-label" for="false_{{ question.id }}">
-                                        错误
-                                    </label>
-                                </div>
-                            </div>
-                            {% elif question.question_type == 'fill_blank' %}
-                            <div class="fill-blank">
-                                <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="请输入您的答案">
-                            </div>
-                            {% elif question.question_type == 'essay' %}
-                            <div class="essay">
-                                <textarea class="form-control" name="question_{{ question.id }}" rows="5" placeholder="请输入您的答案"></textarea>
-                            </div>
-                            {% endif %}
-                            
-                            <div class="text-muted mt-2">
-                                <small>分值: {{ question.points }} 分</small>
+                    <p class="lead mb-0">{{ quiz.description|default:"No description" }}</p>
+                </div>
+            </div>
+            
+            <!-- Timer (if there's a time limit) -->
+            {% if quiz.time_limit > 0 %}
+            <div class="timer-container mb-4">
+                <div class="progress-container">
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar" role="progressbar" style="width: 100%;" id="time-progress-bar"></div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-clock"></i> Time Remaining:
+                        <span id="timer" data-time-limit="{{ quiz.time_limit }}" data-start-time="{{ attempt.started_at|date:'U' }}">
+                            {{ quiz.time_limit }}:00
+                        </span>
+                    </div>
+                    <div>
+                        <span class="badge bg-secondary" id="question-progress">Question 1 / {{ question_forms|length }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Quiz form -->
+            <form id="quiz-form" method="post" action="{% url 'quizzes:quiz_attempt' quiz.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="attempt_id" value="{{ attempt.id }}">
+                
+                {% for question, form in question_forms %}
+                <div class="question-container {% if forloop.first %}active{% endif %}" id="question-{{ forloop.counter }}" data-question-index="{{ forloop.counter }}">
+                    <div class="question-text">
+                        <span class="badge bg-primary me-2">{{ forloop.counter }}</span>
+                        {{ question.question_text }}
+                    </div>
+                    <div class="options">
+                        {% for choice in question.choices.all %}
+                        <div class="option-container">
+                            <div class="form-check">
+                                <input class="form-check-input option-input" 
+                                       type="radio" 
+                                       name="question_{{ question.id }}" 
+                                       id="option_{{ question.id }}_{{ choice.id }}" 
+                                       value="{{ choice.id }}"
+                                       {% if form.instance.selected_choice and form.instance.selected_choice.id == choice.id %}checked{% endif %}>
+                                <label class="form-check-label" for="option_{{ question.id }}_{{ choice.id }}">
+                                    {{ choice.choice_text }}
+                                </label>
                             </div>
                         </div>
                         {% endfor %}
-                        
-                        <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-check-circle"></i> 提交测验
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+                {% endfor %}
+                
+                <!-- Navigation buttons -->
+                <div class="navigation-buttons">
+                    <button type="button" id="prev-btn" class="btn btn-secondary" disabled>
+                        <i class="fas fa-arrow-left"></i> Previous Question
+                    </button>
+                    
+                    <button type="button" id="next-btn" class="btn btn-primary">
+                        Next Question <i class="fas fa-arrow-right"></i>
+                    </button>
+                    
+                    <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">
+                        <i class="fas fa-check-circle"></i> Submit Quiz
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{% if attempt.quiz.time_limit > 0 %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 设置倒计时
-        let timeLimit = {{ attempt.quiz.time_limit }} * 60; // 转换为秒
-        const timerElement = document.getElementById('time-remaining');
+        // Timer functionality
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+            const timeLimit = parseInt(timerElement.getAttribute('data-time-limit')) || 0;
+            const startTime = parseInt(timerElement.getAttribute('data-start-time')) || 0;
+            const progressBar = document.getElementById('time-progress-bar');
+            
+            if (timeLimit > 0 && startTime > 0) {
+                const currentTime = Math.floor(Date.now() / 1000);
+                const elapsedMinutes = Math.floor((currentTime - startTime) / 60);
+                let remainingMinutes = timeLimit - elapsedMinutes;
+                let remainingSeconds = 59 - (Math.floor((currentTime - startTime) % 60));
+                
+                if (remainingMinutes < 0 || (remainingMinutes === 0 && remainingSeconds <= 0)) {
+                    // Auto-submit form, time's up
+                    document.getElementById('quiz-form').submit();
+                    return;
+                }
+                
+                const totalSeconds = timeLimit * 60;
+                const remainingTotalSeconds = (remainingMinutes * 60) + remainingSeconds;
+                const percentageRemaining = (remainingTotalSeconds / totalSeconds) * 100;
+                
+                progressBar.style.width = percentageRemaining + '%';
+                
+                if (percentageRemaining < 25) {
+                    progressBar.classList.remove('bg-primary');
+                    progressBar.classList.add('bg-danger');
+                }
+                
+                // Update timer display
+                const updateTimer = () => {
+                    if (remainingMinutes <= 0 && remainingSeconds <= 0) {
+                        // Time's up, auto-submit
+                        document.getElementById('quiz-form').submit();
+                        return;
+                    }
+                    
+                    const formattedTime = `${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+                    timerElement.textContent = formattedTime;
+                    
+                    // Add warning style if less than 5 minutes remaining
+                    if (remainingMinutes < 5) {
+                        timerElement.classList.add('timer-warning');
+                    }
+                    
+                    // Update progress bar
+                    const currentTotalSeconds = (remainingMinutes * 60) + remainingSeconds;
+                    const currentPercentage = (currentTotalSeconds / totalSeconds) * 100;
+                    progressBar.style.width = currentPercentage + '%';
+                    
+                    remainingSeconds--;
+                    if (remainingSeconds < 0) {
+                        remainingMinutes--;
+                        remainingSeconds = 59;
+                    }
+                };
+                
+                // Initial update
+                updateTimer();
+                
+                // Update timer every second
+                setInterval(updateTimer, 1000);
+            }
+        }
         
-        const timer = setInterval(function() {
-            timeLimit--;
+        // Question navigation
+        const questions = document.querySelectorAll('.question-container');
+        const questionProgress = document.getElementById('question-progress');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        let currentQuestionIndex = 0;
+        const totalQuestions = questions.length;
+        
+        // Initialize question display
+        updateQuestionDisplay();
+        
+        // Next button click handler
+        nextBtn.addEventListener('click', function() {
+            if (currentQuestionIndex < totalQuestions - 1) {
+                currentQuestionIndex++;
+                updateQuestionDisplay();
+            }
+        });
+        
+        // Previous button click handler
+        prevBtn.addEventListener('click', function() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                updateQuestionDisplay();
+            }
+        });
+        
+        // Function to update question display
+        function updateQuestionDisplay() {
+            // Hide all questions
+            questions.forEach(q => q.classList.remove('active'));
             
-            if (timeLimit <= 0) {
-                clearInterval(timer);
-                document.getElementById('quiz-form').submit();
-                return;
+            // Show current question
+            questions[currentQuestionIndex].classList.add('active');
+            
+            // Update progress text
+            if (questionProgress) {
+                questionProgress.textContent = `Question ${currentQuestionIndex + 1} / ${totalQuestions}`;
             }
             
-            const minutes = Math.floor(timeLimit / 60);
-            const seconds = timeLimit % 60;
+            // Update button states
+            prevBtn.disabled = currentQuestionIndex === 0;
             
-            timerElement.textContent = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-            
-            // 当时间不足5分钟时，显示红色警告
-            if (timeLimit < 300) {
-                document.getElementById('timer').classList.add('bg-danger');
-                document.getElementById('timer').classList.add('text-white');
-                document.getElementById('timer').classList.remove('bg-light');
-                document.getElementById('timer').classList.remove('text-dark');
+            if (currentQuestionIndex === totalQuestions - 1) {
+                // On last question, hide next button and show submit button
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'block';
+            } else {
+                // Not on last question, show next button and hide submit button
+                nextBtn.style.display = 'block';
+                submitBtn.style.display = 'none';
             }
-        }, 1000);
+        }
+        
+        // Leave page warning
+        window.addEventListener('beforeunload', function(e) {
+            // Check if all questions have been answered
+            const allQuestionsAnswered = Array.from(questions).every(question => {
+                const options = question.querySelectorAll('.option-input');
+                return Array.from(options).some(option => option.checked);
+            });
+            
+            if (!allQuestionsAnswered) {
+                // Show confirmation dialog
+                const confirmationMessage = 'You have not completed all questions. Leaving this page will lose your current progress. Are you sure you want to leave?';
+                (e || window.event).returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        });
+        
+        // Auto-save periodically
+        setInterval(function() {
+            const formData = new FormData(document.getElementById('quiz-form'));
+            formData.append('auto_save', 'true');
+            
+            fetch(document.getElementById('quiz-form').action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            }).then(response => {
+                if (response.ok) {
+                    console.log('Auto-save successful');
+                }
+            }).catch(error => {
+                console.error('Auto-save failed:', error);
+            });
+        }, 30000); // Auto-save every 30 seconds
     });
 </script>
-{% endif %}
-{% endblock %} 
+{% endblock %}

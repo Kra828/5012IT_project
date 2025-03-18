@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+  {% if form.instance.pk %}Edit Question{% else %}Add Question{% endif %}
+{% endblock %}
+
+{% block custom_css %}
+<style>
+  .form-group label {
+    font-weight: bold;
+  }
+  .help-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+  }
+  .error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+  .choice-item {
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+  }
+  .choice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .hidden-initially {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-9 mx-auto">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'quizzes:teacher_quiz_list' %}">My Quizzes</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'quizzes:quiz_update' quiz.id %}">{{ quiz.title }}</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'quizzes:question_list' quiz.id %}">Question Management</a></li>
+          <li class="breadcrumb-item active">{% if form.instance.pk %}Edit Question{% else %}Add Question{% endif %}</li>
+        </ol>
+      </nav>
+      
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3 class="card-title mb-0">{% if form.instance.pk %}Edit Question{% else %}Add Question{% endif %}</h3>
+        </div>
+        <div class="card-body">
+          {% if form.errors %}
+          <div class="alert alert-danger">
+            <strong>Form Validation Error:</strong> Please check the form below for errors.
+          </div>
+          {% endif %}
+
+          <form method="post" id="question-form">
+            {% csrf_token %}
+            <input type="hidden" name="quiz" value="{{ quiz.id }}">
+            
+            <div class="form-group mb-3">
+              <label for="id_question_text">Question Text:</label>
+              {{ form.question_text }}
+              {% if form.question_text.errors %}
+              <div class="error-message">{{ form.question_text.errors }}</div>
+              {% endif %}
+            </div>
+            
+            <div class="form-group mb-3">
+              <label for="id_question_type">Question Type:</label>
+              <select name="question_type" id="id_question_type" class="form-control" required>
+                <option value="">--Select Question Type--</option>
+                <option value="multiple_choice" {% if form.question_type.value == 'multiple_choice' %}selected{% endif %}>
+                  Multiple Choice
+                </option>
+                <option value="true_false" {% if form.question_type.value == 'true_false' %}selected{% endif %}>
+                  True/False
+                </option>
+                <option value="fill_blank" {% if form.question_type.value == 'fill_blank' %}selected{% endif %}>
+                  Fill in the Blank
+                </option>
+                <option value="essay" {% if form.question_type.value == 'essay' %}selected{% endif %}>
+                  Essay
+                </option>
+              </select>
+              {% if form.question_type.errors %}
+              <div class="error-message">{{ form.question_type.errors }}</div>
+              {% endif %}
+            </div>
+            
+            <div class="form-group mb-3">
+              <label for="id_points">Points:</label>
+              <input type="number" name="points" id="id_points" class="form-control" 
+                     value="{{ form.points.value|default:'1' }}" min="1" required>
+              {% if form.points.errors %}
+              <div class="error-message">{{ form.points.errors }}</div>
+              {% endif %}
+            </div>
+            
+            <div class="form-group mb-3">
+              <label for="id_order">Order:</label>
+              <input type="number" name="order" id="id_order" class="form-control" 
+                     value="{{ form.order.value|default:'0' }}" min="0">
+              {% if form.order.errors %}
+              <div class="error-message">{{ form.order.errors }}</div>
+              {% endif %}
+              <div class="help-text">Determines the order of questions in the quiz (smaller numbers appear first)</div>
+            </div>
+            
+            <!-- Multiple choice and true/false options -->
+            <div id="choices-section" class="mb-4 {% if form.question_type.value != 'multiple_choice' and form.question_type.value != 'true_false' %}hidden-initially{% endif %}">
+              <label>Answer Options:</label>
+              <div id="choices-container">
+                {% if choices %}
+                  {% for choice in choices %}
+                  <div class="choice-item">
+                    <div class="choice-header">
+                      <h5 class="mb-0">Option {{ forloop.counter }}</h5>
+                      <button type="button" class="btn btn-sm btn-danger remove-choice">Remove</button>
+                    </div>
+                    <div class="form-group mb-2">
+                      <label>Option Text:</label>
+                      <input type="text" name="choice_text[]" class="form-control" value="{{ choice.choice_text }}" required>
+                    </div>
+                    <div class="form-check">
+                      <input type="checkbox" name="is_correct[]" class="form-check-input" value="{{ forloop.counter0 }}" 
+                             {% if choice.is_correct %}checked{% endif %}>
+                      <label class="form-check-label">This option is correct</label>
+                    </div>
+                    <input type="hidden" name="choice_id[]" value="{{ choice.id|default:'' }}">
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="choice-item">
+                    <div class="choice-header">
+                      <h5 class="mb-0">Option 1</h5>
+                      <button type="button" class="btn btn-sm btn-danger remove-choice">Remove</button>
+                    </div>
+                    <div class="form-group mb-2">
+                      <label>Option Text:</label>
+                      <input type="text" name="choice_text[]" class="form-control" required>
+                    </div>
+                    <div class="form-check">
+                      <input type="checkbox" name="is_correct[]" class="form-check-input" value="0">
+                      <label class="form-check-label">This option is correct</label>
+                    </div>
+                    <input type="hidden" name="choice_id[]" value="">
+                  </div>
+                {% endif %}
+              </div>
+              
+              <div class="text-center mt-3">
+                <button type="button" id="add-choice" class="btn btn-secondary">
+                  <i class="fas fa-plus"></i> Add Option
+                </button>
+              </div>
+              
+              <div class="alert alert-info mt-3" id="multiple-choice-info">
+                <i class="fas fa-info-circle"></i> Multiple choice questions can have multiple correct answers. Please mark at least one option as correct.
+              </div>
+              
+              <div class="alert alert-info mt-3" id="true-false-info">
+                <i class="fas fa-info-circle"></i> True/False questions should have exactly two options: one "True" option and one "False" option.
+              </div>
+            </div>
+            
+            <div class="form-group text-center mt-4">
+              <button type="submit" class="btn btn-primary px-4">Save Question</button>
+              <a href="{% url 'quizzes:question_list' quiz.id %}" class="btn btn-secondary px-4 ms-2">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block custom_js %}
+<script src="{% static 'js/ckeditor/ckeditor.js' %}"></script>
+<script>
+  $(document).ready(function() {
+    // Initialize rich text editor
+    if (document.getElementById('id_question_text')) {
+      CKEDITOR.replace('id_question_text', {
+        height: 200,
+        toolbar: [
+          ['Bold', 'Italic', 'Underline', 'Strike'],
+          ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
+          ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+          ['Link', 'Unlink'],
+          ['Image', 'Table'],
+          ['Format', 'FontSize'],
+          ['TextColor', 'BGColor'],
+          ['Maximize', 'Source']
+        ]
+      });
+    }
+    
+    // Question type change handler
+    $('#id_question_type').change(function() {
+      var questionType = $(this).val();
+      
+      if (questionType === 'multiple_choice' || questionType === 'true_false') {
+        $('#choices-section').removeClass('hidden-initially').show();
+        
+        if (questionType === 'multiple_choice') {
+          $('#multiple-choice-info').show();
+          $('#true-false-info').hide();
+        } else {
+          $('#multiple-choice-info').hide();
+          $('#true-false-info').show();
+          
+          // For true/false, ensure there are exactly two options
+          var $choices = $('#choices-container .choice-item');
+          if ($choices.length === 0) {
+            // Add "True" option
+            addChoice();
+            $('input[name="choice_text[]"]').last().val('True');
+            // Add "False" option
+            addChoice();
+            $('input[name="choice_text[]"]').last().val('False');
+          } else if ($choices.length === 1) {
+            // Add second option
+            addChoice();
+            $('input[name="choice_text[]"]').last().val('False');
+          } else if ($choices.length > 2) {
+            // Keep only first two options
+            $choices.slice(2).remove();
+            updateChoiceNumbers();
+          }
+          
+          // Update option text
+          var $choiceTexts = $('input[name="choice_text[]"]');
+          if ($choiceTexts.length >= 2) {
+            if ($choiceTexts.eq(0).val() === '') $choiceTexts.eq(0).val('True');
+            if ($choiceTexts.eq(1).val() === '') $choiceTexts.eq(1).val('False');
+          }
+        }
+      } else {
+        $('#choices-section').hide();
+      }
+    });
+    
+    // Add option button
+    $('#add-choice').click(function() {
+      // If true/false and already have two options, don't add more
+      if ($('#id_question_type').val() === 'true_false' && 
+          $('#choices-container .choice-item').length >= 2) {
+        return;
+      }
+      
+      addChoice();
+    });
+    
+    // Remove option button
+    $(document).on('click', '.remove-choice', function() {
+      // If true/false and only two options, don't allow removal
+      if ($('#id_question_type').val() === 'true_false' && 
+          $('#choices-container .choice-item').length <= 2) {
+        alert('True/False questions require exactly two options!');
+        return;
+      }
+      
+      // If only one option remains, don't allow removal
+      if ($('#choices-container .choice-item').length <= 1) {
+        alert('You must keep at least one option!');
+        return;
+      }
+      
+      $(this).closest('.choice-item').remove();
+      updateChoiceNumbers();
+    });
+    
+    // Initial question type change trigger
+    $('#id_question_type').trigger('change');
+    
+    // Add choice function
+    function addChoice() {
+      var numChoices = $('#choices-container .choice-item').length;
+      var newChoiceHtml = `
+        <div class="choice-item">
+          <div class="choice-header">
+            <h5 class="mb-0">Option ${numChoices + 1}</h5>
+            <button type="button" class="btn btn-sm btn-danger remove-choice">Remove</button>
+          </div>
+          <div class="form-group mb-2">
+            <label>Option Text:</label>
+            <input type="text" name="choice_text[]" class="form-control" required>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="is_correct[]" class="form-check-input" value="${numChoices}">
+            <label class="form-check-label">This option is correct</label>
+          </div>
+          <input type="hidden" name="choice_id[]" value="">
+        </div>
+      `;
+      $('#choices-container').append(newChoiceHtml);
+    }
+    
+    // Update choice numbers function
+    function updateChoiceNumbers() {
+      $('#choices-container .choice-item').each(function(index) {
+        $(this).find('h5').text('Option ' + (index + 1));
+        $(this).find('input[name="is_correct[]"]').val(index);
+      });
+    }
+  });
+</script>
+{% endblock %} 

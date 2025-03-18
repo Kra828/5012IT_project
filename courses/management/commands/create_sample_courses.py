@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
-from courses.models import Course, Category
+from courses.models import Course
 from accounts.models import CustomUser
 from forum.models import DiscussionBoard
 import random
@@ -16,12 +16,6 @@ class Command(BaseCommand):
             if not admin:
                 self.stdout.write(self.style.ERROR('未找到管理员用户，请先创建一个管理员用户'))
                 return
-            
-            # 创建基础分类（如果不存在）
-            category, created = Category.objects.get_or_create(
-                name='基础课程',
-                defaults={'description': '基础课程'}
-            )
             
             # 创建三个基础课程：英语、数学、物理
             courses = [
@@ -52,7 +46,6 @@ class Command(BaseCommand):
                 course = Course.objects.create(
                     title=title,
                     slug=slug,
-                    category=category,
                     instructor=admin,
                     overview=course_data['overview'],
                     is_published=True

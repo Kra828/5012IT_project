@@ -4,20 +4,19 @@ from . import views
 app_name = 'quizzes'
 
 urlpatterns = [
-    # 测验
+    # 测验列表视图
     path('', views.QuizListView.as_view(), name='quiz_list'),
-    path('<int:quiz_id>/', views.QuizDetailView.as_view(), name='quiz_detail'),
-    path('<int:quiz_id>/start/', views.StartQuizView.as_view(), name='start_quiz'),
-    path('<int:quiz_id>/attempt/<int:attempt_id>/', views.QuizAttemptView.as_view(), name='quiz_attempt'),
-    path('<int:quiz_id>/attempt/<int:attempt_id>/submit/', views.SubmitQuizView.as_view(), name='submit_quiz'),
-    path('<int:quiz_id>/attempt/<int:attempt_id>/results/', views.QuizResultsView.as_view(), name='quiz_results'),
     
     # 教师测验管理
-    path('manage/', views.TeacherQuizListView.as_view(), name='teacher_quiz_list'),
-    path('manage/create/', views.QuizCreateView.as_view(), name='quiz_create'),
-    path('manage/<int:quiz_id>/edit/', views.QuizUpdateView.as_view(), name='quiz_update'),
+    path('teacher/', views.TeacherQuizListView.as_view(), name='teacher_quiz_list'),
+    path('create/', views.QuizCreateView.as_view(), name='quiz_create'),
+    path('manage/<int:quiz_id>/edit/', views.QuizUpdateView.as_view(), name='quiz_edit'),
     path('manage/<int:quiz_id>/delete/', views.QuizDeleteView.as_view(), name='quiz_delete'),
-    path('manage/<int:quiz_id>/publish/', views.PublishQuizView.as_view(), name='publish_quiz'),
+    
+    # 测验详情和尝试
+    path('<int:quiz_id>/', views.QuizDetailView.as_view(), name='quiz_detail'),
+    path('<int:quiz_id>/attempt/', views.QuizAttemptView.as_view(), name='quiz_attempt'),
+    path('result/<int:attempt_id>/', views.QuizResultView.as_view(), name='quiz_result'),
     
     # 问题管理
     path('manage/<int:quiz_id>/questions/', views.QuestionListView.as_view(), name='question_list'),
