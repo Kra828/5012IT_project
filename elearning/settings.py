@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# 加载环境变量
+# Load environment variables
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -160,6 +160,11 @@ ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_CONFIRM_EMAIL_ON_GET = False
 
+# Use our custom signup form
+ACCOUNT_FORMS = {
+    'signup': 'accounts.forms.CustomSignupForm',
+}
+
 # Email settings (for development)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # For production, use SMTP settings:
@@ -194,5 +199,5 @@ CKEDITOR_CONFIGS = {
     },
 }
 
-# OpenAI API 设置
+# OpenAI API settings
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')

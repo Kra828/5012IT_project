@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}删除评论确认{% endblock %}
+{% block title %}Delete Comment Confirmation{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -9,25 +9,25 @@
         <div class="col-md-6 mx-auto">
             <div class="card">
                 <div class="card-header bg-danger text-white">
-                    <h4 class="mb-0">确认删除</h4>
+                    <h4 class="mb-0">Confirm Deletion</h4>
                 </div>
                 <div class="card-body">
-                    <p class="lead">您确定要删除这条评论吗？</p>
+                    <p class="lead">Are you sure you want to delete this comment?</p>
                     <div class="card mb-3">
                         <div class="card-body">
-                            {{ object.content|safe }}
+                            {{ object.content|safe|truncatechars_html:200 }}
                         </div>
                     </div>
-                    <p class="text-danger">此操作不可逆，删除后将无法恢复。</p>
+                    <p class="text-danger">This action cannot be undone.</p>
                     
                     <form method="post">
                         {% csrf_token %}
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash"></i> 确认删除
+                                <i class="fas fa-trash"></i> Confirm Delete
                             </button>
-                            <a href="{% url 'forum:post_detail' object.post.board.id object.post.id %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times"></i> 取消
+                            <a href="{% url 'forum:post_detail' post.board.id post.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancel
                             </a>
                         </div>
                     </form>

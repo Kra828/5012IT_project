@@ -19,43 +19,43 @@ class CourseAdmin(admin.ModelAdmin):
     actions = ['publish_courses', 'unpublish_courses', 'assign_teacher']
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 限制instructor字段只显示teacher类型的用户
+        # Limit instructor field to show only users with teacher type
         if db_field.name == "instructor":
             kwargs["queryset"] = CustomUser.objects.filter(user_type='teacher')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
     
     def publish_courses(self, request, queryset):
-        """发布选中的课程"""
+        """Publish selected courses"""
         updated = queryset.update(is_published=True)
-        self.message_user(request, f'成功发布 {updated} 个课程', messages.SUCCESS)
-    publish_courses.short_description = "发布选中的课程"
+        self.message_user(request, f'Successfully published {updated} courses', messages.SUCCESS)
+    publish_courses.short_description = "Publish selected courses"
     
     def unpublish_courses(self, request, queryset):
-        """取消发布选中的课程"""
+        """Unpublish selected courses"""
         updated = queryset.update(is_published=False)
-        self.message_user(request, f'成功取消发布 {updated} 个课程', messages.SUCCESS)
-    unpublish_courses.short_description = "取消发布选中的课程"
+        self.message_user(request, f'Successfully unpublished {updated} courses', messages.SUCCESS)
+    unpublish_courses.short_description = "Unpublish selected courses"
     
     def assign_teacher(self, request, queryset):
-        """为选中的课程指派教师"""
-        # 获取所有教师
+        """Assign teachers to selected courses"""
+        # Get all teachers
         teachers = CustomUser.objects.filter(user_type='teacher')
         
         if not teachers.exists():
-            self.message_user(request, '没有可用的教师用户', messages.ERROR)
+            self.message_user(request, 'No teacher users available', messages.ERROR)
             return
         
-        # 获取没有教师的课程
+        # Get courses without instructors
         unassigned_courses = queryset.filter(instructor__isnull=True)
         
         if not unassigned_courses.exists():
-            self.message_user(request, '选中的课程已经有教师', messages.WARNING)
+            self.message_user(request, 'Selected courses already have instructors', messages.WARNING)
             return
         
-        # 为每个课程分配教师
+        # Assign teachers to each course
         assigned_count = 0
         for course in unassigned_courses:
-            # 找到负责课程最少的教师
+            # Find the teacher with the fewest courses
             teacher = teachers.annotate(
                 course_count=models.Count('course')
             ).order_by('course_count').first()
@@ -65,10 +65,10 @@ class CourseAdmin(admin.ModelAdmin):
             assigned_count += 1
         
         if assigned_count > 0:
-            self.message_user(request, f'成功为 {assigned_count} 个课程分配教师', messages.SUCCESS)
+            self.message_user(request, f'Successfully assigned instructors to {assigned_count} courses', messages.SUCCESS)
         else:
-            self.message_user(request, '没有为任何课程分配教师', messages.WARNING)
-    assign_teacher.short_description = "为选中的课程指派教师"
+            self.message_user(request, 'No courses were assigned to any instructors', messages.WARNING)
+    assign_teacher.short_description = "Assign teachers to selected courses"
 
 @admin.register(CourseFile)
 class CourseFileAdmin(admin.ModelAdmin):
@@ -78,10 +78,10 @@ class CourseFileAdmin(admin.ModelAdmin):
     date_hierarchy = 'upload_date'
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 限制course字段只显示已经有讲师的课程
+        # Limit course field to show only courses with instructors
         if db_field.name == "course":
             kwargs["queryset"] = Course.objects.filter(instructor__isnull=False)
-        # 限制uploaded_by字段只显示教师类型的用户
+        # Limit uploaded_by field to show only teacher users
         elif db_field.name == "uploaded_by":
             kwargs["queryset"] = CustomUser.objects.filter(user_type='teacher')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -92,7 +92,7 @@ class LessonAdmin(admin.ModelAdmin):
     search_fields = ('title', 'content', 'chapter__title')
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 限制chapter字段只显示已经有课程的章节
+        # Limit chapter field to show only chapters with courses
         if db_field.name == "chapter":
             kwargs["queryset"] = Chapter.objects.filter(course__instructor__isnull=False)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -103,7 +103,7 @@ class ChapterAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description', 'course__title')
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 限制course字段只显示已经有讲师的课程
+        # Limit course field to show only courses with instructors
         if db_field.name == "course":
             kwargs["queryset"] = Course.objects.filter(instructor__isnull=False)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)

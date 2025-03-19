@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}编辑评论{% endblock %}
+{% block title %}Edit Comment{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -9,11 +9,11 @@
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">课程</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">Courses</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'courses:course_detail' post.board.course.slug %}">{{ post.board.course.title }}</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'forum:board_detail' post.board.id %}">讨论区</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'forum:board_detail' post.board.id %}">Discussion Board</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'forum:post_detail' post.board.id post.id %}">{{ post.title }}</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">编辑评论</li>
+                    <li class="breadcrumb-item active" aria-current="page">Edit Comment</li>
                 </ol>
             </nav>
         </div>
@@ -23,14 +23,14 @@
         <div class="col-md-8 mx-auto">
             <div class="card">
                 <div class="card-header">
-                    <h4>编辑评论</h4>
+                    <h4>Edit Comment</h4>
                 </div>
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
                         
                         <div class="mb-3">
-                            <label for="{{ form.content.id_for_label }}" class="form-label">评论内容</label>
+                            <label for="{{ form.content.id_for_label }}" class="form-label">Comment Content</label>
                             {{ form.content }}
                             {% if form.content.errors %}
                             <div class="invalid-feedback d-block">
@@ -41,10 +41,10 @@
                         
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> 保存评论
+                                <i class="fas fa-save"></i> Save Comment
                             </button>
                             <a href="{% url 'forum:post_detail' post.board.id post.id %}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> 返回帖子
+                                <i class="fas fa-times"></i> Cancel
                             </a>
                         </div>
                     </form>

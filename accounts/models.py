@@ -4,12 +4,21 @@ from django.utils.translation import gettext_lazy as _
 
 class CustomUser(AbstractUser):
     """
-    自定义用户模型，扩展Django的AbstractUser，
-    添加用户类型（学生/教师）和其他必要字段
+    Custom user model extending Django's AbstractUser,
+    adding user type (student/teacher) and other necessary fields
     """
     USER_TYPE_CHOICES = (
         ('student', _('Student')),
         ('teacher', _('Teacher')),
+    )
+    
+    # Set email to be unique
+    email = models.EmailField(
+        _('email address'),
+        unique=True,
+        error_messages={
+            'unique': _("A user with that email already exists."),
+        }
     )
     
     user_type = models.CharField(
@@ -27,14 +36,14 @@ class CustomUser(AbstractUser):
     )
     date_of_birth = models.DateField(blank=True, null=True, verbose_name=_('Date of Birth'))
     
-    # 教师特有字段
+    # Teacher-specific fields
     specialization = models.CharField(
         max_length=100, 
         blank=True, 
         verbose_name=_('Specialization')
     )
     
-    # 学生特有字段
+    # Student-specific fields
     student_id = models.CharField(
         max_length=20, 
         blank=True, 
@@ -46,11 +55,11 @@ class CustomUser(AbstractUser):
         verbose_name_plural = _('Users')
     
     def is_student(self):
-        """检查用户是否为学生"""
+        """Check if user is a student"""
         return self.user_type == 'student'
     
     def is_teacher(self):
-        """检查用户是否为教师"""
+        """Check if user is a teacher"""
         return self.user_type == 'teacher'
     
     def __str__(self):

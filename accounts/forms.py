@@ -14,6 +14,13 @@ class CustomSignupForm(SignupForm):
         initial='student'
     )
     
+    def clean_email(self):
+        """Validate email uniqueness"""
+        email = self.cleaned_data.get('email')
+        if email and User.objects.filter(email=email).exists():
+            raise forms.ValidationError(_("This email address is already in use. Please use a different email address."))
+        return email
+    
     def save(self, request):
         # 保存用户类型
         user = super().save(request)

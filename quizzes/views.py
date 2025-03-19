@@ -391,10 +391,23 @@ class QuizCreateView(LoginRequiredMixin, View):
                 
                 # Process 4 choices
                 choices_data = []
-                has_correct = False
+                correct_option = request.POST.get(f'question_{i}_correct')
+                
+                if not correct_option:
+                    messages.error(request, _(f"Question {i} must have a correct answer selected."))
+                    # Delete created question and choices
+                    question.delete()
+                    return render(request, 'quizzes/quiz_form.html', {
+                        'form': form,
+                        'courses': courses,
+                        'is_create': True
+                    })
+                    
+                correct_option_num = int(correct_option)
+                
                 for j in range(1, 5):  # Fixed 4 choices
                     choice_text = request.POST.get(f'question_{i}_choice_{j}')
-                    is_correct = request.POST.get(f'question_{i}_correct_{j}') == 'on'
+                    is_correct = (j == correct_option_num)
                     
                     if not choice_text:
                         messages.error(request, _(f"All choices for question {i} must be filled out."))
@@ -404,9 +417,6 @@ class QuizCreateView(LoginRequiredMixin, View):
                             'is_create': True
                         })
                     
-                    if is_correct:
-                        has_correct = True
-                    
                     # Create choice
                     Choice.objects.create(
                         question=question,
@@ -414,17 +424,6 @@ class QuizCreateView(LoginRequiredMixin, View):
                         is_correct=is_correct,
                         choice_number=j
                     )
-                
-                # Ensure each question has at least one correct answer
-                if not has_correct:
-                    messages.error(request, _(f"Question {i} must be marked with at least one correct answer."))
-                    # Delete created question and choices
-                    question.delete()
-                    return render(request, 'quizzes/quiz_form.html', {
-                        'form': form,
-                        'courses': courses,
-                        'is_create': True
-                    })
             
             messages.success(request, _("Quiz created successfully!"))
             return redirect('quizzes:teacher_quiz_list')
@@ -482,13 +481,8 @@ class QuizUpdateView(LoginRequiredMixin, View):
             
             # Process 5 questions
             for i in range(1, 6):  # Fixed 5 questions
-                question = Question.objects.get_or_create(
-                    quiz=quiz,
-                    question_number=i,
-                    defaults={'question_text': ''}
-                )[0]
-                
                 question_text = request.POST.get(f'question_{i}')
+                
                 if not question_text:
                     messages.error(request, _("All questions must be filled out."))
                     return render(request, 'quizzes/quiz_form.html', {
@@ -499,20 +493,41 @@ class QuizUpdateView(LoginRequiredMixin, View):
                         'is_create': False
                     })
                 
+                # Get or create question
+                question = Question.objects.get_or_create(
+                    quiz=quiz,
+                    question_number=i,
+                    defaults={'question_text': question_text}
+                )[0]
+                
+                # Update question text
                 question.question_text = question_text
                 question.save()
                 
                 # Process 4 choices
-                has_correct = False
-                for j in range(1, 5):  # Fixed 4 choices
-                    choice = Choice.objects.get_or_create(
-                        question=question,
-                        choice_number=j,
-                        defaults={'choice_text': '', 'is_correct': False}
-                    )[0]
+                correct_option = request.POST.get(f'question_{i}_correct')
+                
+                if not correct_option:
+                    messages.error(request, _(f"Question {i} must have a correct answer selected."))
+                    return render(request, 'quizzes/quiz_form.html', {
+                        'form': form,
+                        'quiz': quiz,
+                        'questions': quiz.get_questions(),
+                        'courses': courses,
+                        'is_create': False
+                    })
                     
+                correct_option_num = int(correct_option)
+                
+                # First, reset all choices to not correct
+                existing_choices = Choice.objects.filter(question=question)
+                for choice in existing_choices:
+                    choice.is_correct = False
+                    choice.save()
+                
+                for j in range(1, 5):  # Fixed 4 choices
                     choice_text = request.POST.get(f'question_{i}_choice_{j}')
-                    is_correct = request.POST.get(f'question_{i}_correct_{j}') == 'on'
+                    is_correct = (j == correct_option_num)
                     
                     if not choice_text:
                         messages.error(request, _(f"All choices for question {i} must be filled out."))
@@ -524,23 +539,17 @@ class QuizUpdateView(LoginRequiredMixin, View):
                             'is_create': False
                         })
                     
-                    if is_correct:
-                        has_correct = True
+                    # Get or create choice
+                    choice = Choice.objects.get_or_create(
+                        question=question,
+                        choice_number=j,
+                        defaults={'choice_text': choice_text, 'is_correct': is_correct}
+                    )[0]
                     
+                    # Update choice
                     choice.choice_text = choice_text
                     choice.is_correct = is_correct
                     choice.save()
-                
-                # Ensure each question has at least one correct answer
-                if not has_correct:
-                    messages.error(request, _(f"Question {i} must be marked with at least one correct answer."))
-                    return render(request, 'quizzes/quiz_form.html', {
-                        'form': form,
-                        'quiz': quiz,
-                        'questions': quiz.get_questions(),
-                        'courses': courses,
-                        'is_create': False
-                    })
             
             messages.success(request, _("Quiz updated successfully!"))
             return redirect('quizzes:teacher_quiz_list')
