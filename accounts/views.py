@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 
 from .forms import UserProfileForm, TeacherProfileForm, StudentProfileForm
-from quizzes.models import QuizAttempt
+from quizzes.models import QuizAttempt, Quiz
 from courses.models import Course, Enrollment
 
 # Try to import Submission model if it exists
@@ -119,14 +119,14 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 total_students += course.students.count()
             context['total_students'] = total_students
             
-            # Get number of pending submissions
+            # Get number of published quizzes
             try:
-                pending_submissions = Submission.objects.filter(
-                    assignment__course__instructor=user,
-                    status='submitted'
+                published_quizzes = Quiz.objects.filter(
+                    course__instructor=user,
+                    is_published=True
                 ).count()
             except:
-                pending_submissions = 0
-            context['pending_submissions'] = pending_submissions
+                published_quizzes = 0
+            context['published_quizzes'] = published_quizzes
             
         return context

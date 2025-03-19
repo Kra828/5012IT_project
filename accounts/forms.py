@@ -6,7 +6,7 @@ from allauth.account.forms import SignupForm
 User = get_user_model()
 
 class CustomSignupForm(SignupForm):
-    """自定义注册表单，添加用户类型选择"""
+    """Custom signup form with user type selection"""
     user_type = forms.ChoiceField(
         choices=User.USER_TYPE_CHOICES,
         widget=forms.RadioSelect,
@@ -22,14 +22,14 @@ class CustomSignupForm(SignupForm):
         return email
     
     def save(self, request):
-        # 保存用户类型
+        # Save user type
         user = super().save(request)
         user.user_type = self.cleaned_data['user_type']
         user.save()
         return user
 
 class UserProfileForm(forms.ModelForm):
-    """用户个人资料基础表单"""
+    """Base user profile form"""
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'bio', 'profile_picture', 'date_of_birth']
@@ -39,11 +39,11 @@ class UserProfileForm(forms.ModelForm):
         }
 
 class TeacherProfileForm(UserProfileForm):
-    """教师个人资料表单"""
+    """Teacher profile form"""
     class Meta(UserProfileForm.Meta):
         fields = UserProfileForm.Meta.fields + ['specialization']
 
 class StudentProfileForm(UserProfileForm):
-    """学生个人资料表单"""
+    """Student profile form"""
     class Meta(UserProfileForm.Meta):
         fields = UserProfileForm.Meta.fields + ['student_id'] 

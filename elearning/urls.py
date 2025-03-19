@@ -22,8 +22,8 @@ from django.views.generic import TemplateView
 from accounts.views import DashboardView
 
 # Customize admin interface
-admin.site.site_header = "Online Learning Platform Administration"
-admin.site.site_title = "Online Learning Platform Admin"
+admin.site.site_header = "Smart Interactive Learning Platform Administration"
+admin.site.site_title = "Smart Interactive Learning Platform Admin"
 admin.site.index_title = "Admin Dashboard"
 
 # Unregister unnecessary models

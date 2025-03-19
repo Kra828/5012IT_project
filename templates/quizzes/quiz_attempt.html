@@ -186,19 +186,20 @@
             
             if (timeLimit > 0 && startTime > 0) {
                 const currentTime = Math.floor(Date.now() / 1000);
-                const elapsedMinutes = Math.floor((currentTime - startTime) / 60);
-                let remainingMinutes = timeLimit - elapsedMinutes;
-                let remainingSeconds = 59 - (Math.floor((currentTime - startTime) % 60));
+                const elapsedSeconds = currentTime - startTime;
+                const remainingSeconds = (timeLimit * 60) - elapsedSeconds;
                 
-                if (remainingMinutes < 0 || (remainingMinutes === 0 && remainingSeconds <= 0)) {
+                let remainingMinutes = Math.floor(remainingSeconds / 60);
+                let remainingSecondsDisplay = remainingSeconds % 60;
+                
+                if (remainingSeconds <= 0) {
                     // Auto-submit form, time's up
                     document.getElementById('quiz-form').submit();
                     return;
                 }
                 
                 const totalSeconds = timeLimit * 60;
-                const remainingTotalSeconds = (remainingMinutes * 60) + remainingSeconds;
-                const percentageRemaining = (remainingTotalSeconds / totalSeconds) * 100;
+                const percentageRemaining = (remainingSeconds / totalSeconds) * 100;
                 
                 progressBar.style.width = percentageRemaining + '%';
                 
@@ -209,13 +210,13 @@
                 
                 // Update timer display
                 const updateTimer = () => {
-                    if (remainingMinutes <= 0 && remainingSeconds <= 0) {
+                    if (remainingMinutes <= 0 && remainingSecondsDisplay <= 0) {
                         // Time's up, auto-submit
                         document.getElementById('quiz-form').submit();
                         return;
                     }
                     
-                    const formattedTime = `${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+                    const formattedTime = `${remainingMinutes.toString().padStart(2, '0')}:${remainingSecondsDisplay.toString().padStart(2, '0')}`;
                     timerElement.textContent = formattedTime;
                     
                     // Add warning style if less than 5 minutes remaining
@@ -224,14 +225,15 @@
                     }
                     
                     // Update progress bar
-                    const currentTotalSeconds = (remainingMinutes * 60) + remainingSeconds;
+                    const currentTotalSeconds = (remainingMinutes * 60) + remainingSecondsDisplay;
                     const currentPercentage = (currentTotalSeconds / totalSeconds) * 100;
                     progressBar.style.width = currentPercentage + '%';
                     
-                    remainingSeconds--;
-                    if (remainingSeconds < 0) {
+                    if (remainingSecondsDisplay > 0) {
+                        remainingSecondsDisplay--;
+                    } else {
                         remainingMinutes--;
-                        remainingSeconds = 59;
+                        remainingSecondsDisplay = 59;
                     }
                 };
                 

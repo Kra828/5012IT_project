@@ -1,4 +1,4 @@
-# Online Learning Platform
+# Smart Interactive Learning Platform
 
 An advanced online learning platform built with Django, designed to facilitate teaching and learning through an interactive web application.
 

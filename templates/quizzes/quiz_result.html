@@ -121,18 +121,6 @@
                     <div class="col-md-6 text-center text-md-start">
                         <h3 class="mb-2">{{ attempt.quiz.title }}</h3>
                         <p class="mb-1">Completed at: {{ attempt.completed_at|date:"Y-m-d H:i" }}</p>
-                        <p class="mb-1 completion-time">
-                            Time spent: 
-                            {% with time_spent=attempt.get_time_spent %}
-                            {% if time_spent.hours > 0 %}
-                            {{ time_spent.hours }} hours
-                            {% endif %}
-                            {% if time_spent.minutes > 0 %}
-                            {{ time_spent.minutes }} minutes
-                            {% endif %}
-                            {{ time_spent.seconds }} seconds
-                            {% endwith %}
-                        </p>
                     </div>
                     <div class="col-md-6 text-center">
                         <div class="score-display text-primary">{{ attempt.score }}%</div>

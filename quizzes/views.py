@@ -108,9 +108,17 @@ class QuizDetailView(LoginRequiredMixin, View):
 
         # If it's a teacher, get all student attempt records
         if is_teacher:
-            context['attempts'] = QuizAttempt.objects.filter(
-                quiz=quiz
-            ).order_by('-started_at')
+            attempts = QuizAttempt.objects.filter(quiz=quiz).order_by('-started_at')
+            context['attempts'] = attempts
+            
+            # Calculate average and highest scores
+            if attempts.exists():
+                total_score = sum(attempt.score for attempt in attempts)
+                avg_score = total_score / attempts.count()
+                highest_score = max(attempt.score for attempt in attempts)
+                context['avg_score'] = avg_score
+                context['highest_score'] = highest_score
+            
             return render(request, 'quizzes/quiz_detail.html', context)
             
         # Student view below
@@ -310,14 +318,20 @@ class QuizResultView(LoginRequiredMixin, View):
                     'is_correct': False
                 })
         
+        # Add debug information
+        correct_count = sum(1 for a in answers if a['is_correct'])
+        total_count = questions.count()
+        expected_score = (correct_count / total_count) * 100 if total_count > 0 else 0
+        print(f"Debug - view: correct_answers: {correct_count}, total_questions: {total_count}, expected_score: {expected_score}, actual_score: {attempt.score}")
+        
         # Prepare context
         context = {
             'attempt': attempt,
             'quiz': attempt.quiz,
             'score': attempt.score,
             'answers': answers,
-            'total_questions': questions.count(),
-            'correct_answers': sum(1 for a in answers if a['is_correct'])
+            'total_questions': total_count,
+            'correct_answers': correct_count
         }
         
         return render(request, 'quizzes/quiz_result.html', context)

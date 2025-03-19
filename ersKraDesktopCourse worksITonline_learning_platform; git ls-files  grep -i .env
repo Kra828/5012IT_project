@@ -1,7 +1,0 @@
-[35mREADME.md[m[36m:[m[1;31mOPENAI_API_KEY[m=your_[1;31mopenai_api_key[m
-[35mai_assistant/views.py[m[36m:[m            api_key = settings.[1;31mOPENAI_API_KEY[m
-[35melearning/settings.py[m[36m:[m[1;31mOPENAI_API_KEY[m = os.environ.get('[1;31mOPENAI_API_KEY[m', '')
-[35mimport_api_key.py[m[36m:[m    api_key = os.getenv('[1;31mOPENAI_API_KEY[m')
-[35mimport_api_key.py[m[36m:[m        print("错误：在.env文件中未找到[1;31mOPENAI_API_KEY[m")
-[35mtest_network.py[m[36m:[m    api_key = os.environ.get('[1;31mOPENAI_API_KEY[m')
-[35mtest_network.py[m[36m:[m        print("未找到[1;31mOPENAI_API_KEY[m环境变量")

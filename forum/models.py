@@ -5,7 +5,7 @@ from ckeditor.fields import RichTextField
 from courses.models import Course
 
 class DiscussionBoard(models.Model):
-    """课程讨论板模型"""
+    """Course discussion board model"""
     course = models.OneToOneField(
         Course,
         on_delete=models.CASCADE,
@@ -20,18 +20,18 @@ class DiscussionBoard(models.Model):
         verbose_name_plural = _('Discussion Boards')
     
     def __str__(self):
-        return f"Discussion board for {self.course.title}"
+        return f"Discussion Board for {self.course.title}"
     
     def get_latest_posts(self, count=5):
-        """获取最新的帖子"""
-        return self.posts.order_by('-created_at')[:count]
+        """Get the latest posts"""
+        return self.posts.all()[:count]
     
     def get_total_posts(self):
-        """获取帖子总数"""
+        """Get total number of posts"""
         return self.posts.count()
 
 class Post(models.Model):
-    """讨论帖模型"""
+    """Discussion post model"""
     board = models.ForeignKey(
         DiscussionBoard,
         on_delete=models.CASCADE,
@@ -61,16 +61,16 @@ class Post(models.Model):
         return self.title
     
     def get_comment_count(self):
-        """获取评论数量"""
+        """Get comment count"""
         return self.comments.count()
     
     def increment_view(self):
-        """增加浏览量"""
+        """Increase view count"""
         self.views += 1
-        self.save()
+        self.save(update_fields=['views'])
 
 class Comment(models.Model):
-    """评论模型"""
+    """Comment model"""
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -104,15 +104,15 @@ class Comment(models.Model):
         return f"Comment by {self.author.username} on {self.post.title}"
     
     def is_reply(self):
-        """检查是否为回复"""
+        """Check if comment is a reply"""
         return self.parent is not None
     
     def get_replies(self):
-        """获取回复"""
-        return self.replies.all()
+        """Get replies to this comment"""
+        return Comment.objects.filter(parent=self)
 
 class Like(models.Model):
-    """点赞模型"""
+    """Like model"""
     CONTENT_TYPES = (
         ('post', _('Post')),
         ('comment', _('Comment')),
@@ -162,7 +162,7 @@ class Like(models.Model):
             return f"{self.user.username} liked a comment"
 
 class Notification(models.Model):
-    """通知模型"""
+    """Notification model"""
     NOTIFICATION_TYPES = (
         ('post', _('New Post')),
         ('comment', _('New Comment')),
@@ -213,6 +213,6 @@ class Notification(models.Model):
         return f"Notification for {self.recipient.username} - {self.get_notification_type_display()}"
     
     def mark_as_read(self):
-        """标记为已读"""
+        """Mark notification as read"""
         self.is_read = True
-        self.save()
+        self.save(update_fields=['is_read'])

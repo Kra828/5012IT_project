@@ -7,17 +7,17 @@ from courses.models import Course
 from django.http import JsonResponse
 
 class DiscussionBoardListView(LoginRequiredMixin, ListView):
-    """讨论区列表视图"""
+    """Discussion board list view"""
     model = DiscussionBoard
     template_name = 'forum/board_list.html'
     context_object_name = 'boards'
     
     def get_queryset(self):
-        # 获取所有讨论区
+        # Get all discussion boards
         return DiscussionBoard.objects.all()
 
 class DiscussionBoardDetailView(LoginRequiredMixin, DetailView):
-    """讨论区详情视图"""
+    """Discussion board detail view"""
     model = DiscussionBoard
     template_name = 'forum/board_detail.html'
     context_object_name = 'board'
@@ -25,14 +25,14 @@ class DiscussionBoardDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # 获取讨论区的所有帖子
-        context['posts'] = self.object.posts.all().order_by('-is_pinned', '-created_at')
-        # 所有用户都可以发帖
+        # Get all posts in the discussion board
+        context['posts'] = self.object.posts.all()
+        # All users can post
         context['can_post'] = True
         return context
 
 class PostCreateView(LoginRequiredMixin, CreateView):
-    """创建帖子视图"""
+    """Create post view"""
     model = Post
     template_name = 'forum/post_form.html'
     fields = ['title', 'content']
@@ -52,7 +52,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return context
 
 class PostDetailView(LoginRequiredMixin, DetailView):
-    """帖子详情视图"""
+    """Post detail view"""
     model = Post
     template_name = 'forum/post_detail.html'
     context_object_name = 'post'
@@ -60,19 +60,19 @@ class PostDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['comments'] = self.object.comments.all().order_by('created_at')
-        # 所有用户都可以评论
+        # All users can comment
         context['can_comment'] = True
+        context['comments'] = self.object.comments.filter(parent__isnull=True)
         return context
     
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
-        # 增加浏览量
+        # Increase view count
         self.object.increment_view()
         return response
 
 class PostUpdateView(LoginRequiredMixin, UpdateView):
-    """更新帖子视图"""
+    """Update post view"""
     model = Post
     template_name = 'forum/post_form.html'
     fields = ['title', 'content']
@@ -80,8 +80,8 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
     
     def get_success_url(self):
         return reverse_lazy('forum:post_detail', kwargs={
-            'board_id': self.kwargs['board_id'],
-            'post_id': self.kwargs['post_id']
+            'board_id': self.object.board.id,
+            'post_id': self.object.id
         })
     
     def get_context_data(self, **kwargs):
@@ -90,16 +90,16 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 class PostDeleteView(LoginRequiredMixin, DeleteView):
-    """删除帖子视图"""
+    """Delete post view"""
     model = Post
     template_name = 'forum/post_confirm_delete.html'
     pk_url_kwarg = 'post_id'
     
     def get_success_url(self):
-        return reverse_lazy('forum:board_detail', kwargs={'board_id': self.kwargs['board_id']})
+        return reverse_lazy('forum:board_detail', kwargs={'board_id': self.object.board.id})
 
 class CommentCreateView(LoginRequiredMixin, View):
-    """创建评论视图"""
+    """Create comment view"""
     def post(self, request, board_id, post_id):
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         content = request.POST.get('content')
@@ -114,7 +114,7 @@ class CommentCreateView(LoginRequiredMixin, View):
         return redirect('forum:post_detail', board_id=board_id, post_id=post_id)
 
 class ReplyCreateView(LoginRequiredMixin, View):
-    """创建回复视图"""
+    """Create reply view"""
     def post(self, request, board_id, post_id, comment_id):
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         parent_comment = get_object_or_404(Comment, id=comment_id, post=post)
@@ -131,7 +131,7 @@ class ReplyCreateView(LoginRequiredMixin, View):
         return redirect('forum:post_detail', board_id=board_id, post_id=post_id)
 
 class CommentUpdateView(LoginRequiredMixin, UpdateView):
-    """更新评论视图"""
+    """Update comment view"""
     model = Comment
     template_name = 'forum/comment_form.html'
     fields = ['content']
@@ -139,8 +139,8 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
     
     def get_success_url(self):
         return reverse_lazy('forum:post_detail', kwargs={
-            'board_id': self.kwargs['board_id'],
-            'post_id': self.kwargs['post_id']
+            'board_id': self.object.post.board.id,
+            'post_id': self.object.post.id
         })
     
     def get_context_data(self, **kwargs):
@@ -149,74 +149,74 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 class CommentDeleteView(LoginRequiredMixin, DeleteView):
-    """删除评论视图"""
+    """Delete comment view"""
     model = Comment
     template_name = 'forum/comment_confirm_delete.html'
     pk_url_kwarg = 'comment_id'
     
     def get_success_url(self):
         return reverse_lazy('forum:post_detail', kwargs={
-            'board_id': self.kwargs['board_id'],
-            'post_id': self.kwargs['post_id']
+            'board_id': self.object.post.board.id,
+            'post_id': self.object.post.id
         })
 
 class LikePostView(LoginRequiredMixin, View):
-    """点赞帖子视图"""
+    """Like post view"""
     def post(self, request, board_id, post_id):
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         
-        # 检查用户是否已经点赞
+        # Check if user has already liked
         like, created = Like.objects.get_or_create(
             user=request.user,
             content_type='post',
             post=post,
-            defaults={'comment': None}
+            defaults={'user': request.user}
         )
         
+        # If already liked, unlike
         if not created:
-            # 如果已经点赞，则取消点赞
             like.delete()
         
         return redirect('forum:post_detail', board_id=board_id, post_id=post_id)
 
 class LikeCommentView(LoginRequiredMixin, View):
-    """点赞评论视图"""
+    """Like comment view"""
     def post(self, request, board_id, post_id, comment_id):
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         comment = get_object_or_404(Comment, id=comment_id, post=post)
         
-        # 检查用户是否已经点赞
+        # Check if user has already liked
         like, created = Like.objects.get_or_create(
             user=request.user,
             content_type='comment',
             comment=comment,
-            defaults={'post': None}
+            defaults={'user': request.user}
         )
         
+        # If already liked, unlike
         if not created:
-            # 如果已经点赞，则取消点赞
             like.delete()
         
         return redirect('forum:post_detail', board_id=board_id, post_id=post_id)
 
 class NotificationListView(LoginRequiredMixin, ListView):
-    """通知列表视图"""
+    """Notification list view"""
     model = Notification
     template_name = 'forum/notification_list.html'
     context_object_name = 'notifications'
     
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+        return Notification.objects.filter(recipient=self.request.user)
 
 class MarkNotificationReadView(LoginRequiredMixin, View):
-    """标记通知为已读视图"""
+    """Mark notification as read view"""
     def post(self, request, notification_id):
         notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
         notification.mark_as_read()
         return redirect('forum:notification_list')
 
 class MarkAllNotificationsReadView(LoginRequiredMixin, View):
-    """标记所有通知为已读视图"""
+    """Mark all notifications as read view"""
     def post(self, request):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
         return redirect('forum:notification_list')

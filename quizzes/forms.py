@@ -4,7 +4,7 @@ from django.forms import inlineformset_factory
 from .models import Quiz, Question, Choice, StudentAnswer
 
 class QuizForm(forms.ModelForm):
-    """测验表单"""
+    """Quiz form"""
     class Meta:
         model = Quiz
         fields = ['title', 'description', 'course', 'time_limit', 'start_time', 'end_time', 'is_published']
@@ -15,24 +15,24 @@ class QuizForm(forms.ModelForm):
         }
 
 class QuestionForm(forms.ModelForm):
-    """问题表单"""
+    """Question form"""
     class Meta:
         model = Question
         fields = ['question_text']
         widgets = {
-            'question_text': forms.Textarea(attrs={'rows': 3, 'placeholder': '请输入问题内容...'}),
+            'question_text': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Enter question content...'}),
         }
 
 class ChoiceForm(forms.ModelForm):
-    """选项表单"""
+    """Choice form"""
     class Meta:
         model = Choice
         fields = ['choice_text', 'is_correct']
         widgets = {
-            'choice_text': forms.TextInput(attrs={'placeholder': '请输入选项内容...'}),
+            'choice_text': forms.TextInput(attrs={'placeholder': 'Enter choice content...'}),
         }
 
-# 创建选择题的选项的内联表单集
+# Create inline formset for question choices
 ChoiceFormSet = inlineformset_factory(
     Question,
     Choice,
@@ -46,7 +46,7 @@ ChoiceFormSet = inlineformset_factory(
 )
 
 class StudentAnswerForm(forms.ModelForm):
-    """学生答案表单"""
+    """Student answer form"""
     class Meta:
         model = StudentAnswer
         fields = ['selected_choice']
@@ -63,7 +63,7 @@ class StudentAnswerForm(forms.ModelForm):
             self.fields['selected_choice'].empty_label = None
 
     def clean(self):
-        """表单整体验证"""
+        """Form validation"""
         cleaned_data = super().clean()
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')

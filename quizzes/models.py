@@ -6,7 +6,7 @@ from courses.models import Course, Lesson
 from django.utils import timezone
 
 class Quiz(models.Model):
-    """测验模型 - 每个测验有固定的5个多选题"""
+    """Quiz model - each quiz has a fixed set of 5 multiple-choice questions"""
     title = models.CharField(max_length=200, verbose_name=_('Title'))
     course = models.ForeignKey(
         Course,
@@ -45,11 +45,11 @@ class Quiz(models.Model):
         return self.title
     
     def get_questions(self):
-        """获取测验的问题"""
-        return self.questions.all().order_by('question_number')
+        """Get questions for this quiz"""
+        return self.questions.all()
     
     def is_available(self):
-        """检查测验是否可用"""
+        """Check if quiz is available for students"""
         now = timezone.now()
         if not self.is_published:
             return False
@@ -60,43 +60,30 @@ class Quiz(models.Model):
         return True
     
     def delete(self, *args, **kwargs):
-        """重写删除方法，安全处理级联删除"""
+        """Override delete method for safe cascade deletion"""
         try:
-            # 删除相关的尝试和答案
+            # Delete related attempts and answers
             for attempt in self.attempts.all():
-                try:
-                    # 尝试删除与此尝试相关的答案
-                    from django.db import connection
-                    with connection.cursor() as cursor:
-                        try:
-                            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='quizzes_studentanswer'")
-                            if cursor.fetchone():
-                                cursor.execute(f"DELETE FROM quizzes_studentanswer WHERE attempt_id = {attempt.id}")
-                        except Exception:
-                            pass
-                    attempt.delete()
-                except Exception:
-                    pass
+                # Try to delete answers associated with this attempt
+                attempt.answers.all().delete()
+                attempt.delete()
             
-            # 删除问题和选项
+            # Delete questions and choices
             for question in self.questions.all():
-                try:
-                    question.delete()
-                except Exception:
-                    pass
+                question.choices.all().delete()
+                question.delete()
             
-            # 调用父类删除方法
+            # Call parent delete method
             super().delete(*args, **kwargs)
         except Exception as e:
-            # 记录错误并继续
-            from django.db import connection
-            connection.set_rollback(True)
-            # 强制删除测验
-            with connection.cursor() as cursor:
-                cursor.execute(f"DELETE FROM quizzes_quiz WHERE id = {self.id}")
+            # Log error and continue
+            print(f"Error deleting quiz: {e}")
+            
+            # Force delete quiz
+            super().delete(*args, **kwargs)
 
 class Question(models.Model):
-    """问题模型 - 仅支持多选题"""
+    """Question model - supports only multiple choice questions"""
     quiz = models.ForeignKey(
         Quiz,
         on_delete=models.CASCADE,
@@ -120,11 +107,11 @@ class Question(models.Model):
         return f"{self.quiz.title} - Q{self.question_number}: {self.question_text[:30]}"
     
     def get_choices(self):
-        """获取问题的选项"""
+        """Get choices for this question"""
         return self.choices.all()
 
 class Choice(models.Model):
-    """选项模型"""
+    """Choice model"""
     question = models.ForeignKey(
         Question,
         on_delete=models.CASCADE,
@@ -149,7 +136,7 @@ class Choice(models.Model):
         return f"Option {self.choice_number}: {self.choice_text}"
 
 class QuizAttempt(models.Model):
-    """测验尝试模型 - 学生只能尝试一次"""
+    """Quiz attempt model - students can only attempt once"""
     quiz = models.ForeignKey(
         Quiz,
         on_delete=models.CASCADE,
@@ -176,23 +163,31 @@ class QuizAttempt(models.Model):
         return f"{self.student.username}'s attempt on {self.quiz.title}"
     
     def calculate_score(self):
-        """计算测验得分"""
+        """Calculate quiz score"""
         total_questions = self.quiz.questions.count()
         if total_questions == 0:
             return 0
         
-        correct_answers = StudentAnswer.objects.filter(
-            attempt=self,
-            selected_choice__is_correct=True
-        ).count()
+        # Get the number of questions answered by the student
+        student_answers = StudentAnswer.objects.filter(attempt=self)
+        answered_questions_count = student_answers.count()
         
+        # Get the number of correct answers
+        correct_answers = student_answers.filter(selected_choice__is_correct=True).count()
+        
+        # Add debug information
+        print(f"Debug - correct_answers: {correct_answers}, answered_questions: {answered_questions_count}, total_questions: {total_questions}")
+        
+        # Calculate the score based on number of correct answers divided by total questions
+        # This ensures 2 correct answers out of 5 questions gives 40% not 20%
         score_percentage = (correct_answers / total_questions) * 100
+            
         self.score = score_percentage
         self.save()
         return score_percentage
 
 class StudentAnswer(models.Model):
-    """学生答案模型"""
+    """Student answer model"""
     attempt = models.ForeignKey(
         QuizAttempt,
         on_delete=models.CASCADE,
@@ -220,9 +215,9 @@ class StudentAnswer(models.Model):
     def __str__(self):
         return f"Answer for {self.question}"
 
-# 保留原有的Assignment和Submission模型不变
+# Keep the original Assignment and Submission models unchanged
 class Assignment(models.Model):
-    """作业模型"""
+    """Assignment model"""
     title = models.CharField(max_length=200, verbose_name=_('Title'))
     course = models.ForeignKey(
         Course,
@@ -246,7 +241,7 @@ class Assignment(models.Model):
         return self.title
 
 class Submission(models.Model):
-    """作业提交模型"""
+    """Assignment submission model"""
     STATUS_CHOICES = (
         ('submitted', _('Submitted')),
         ('graded', _('Graded')),
