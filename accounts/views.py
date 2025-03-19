@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
+from django.db.models import Count
 
 from .forms import UserProfileForm, TeacherProfileForm, StudentProfileForm
 from quizzes.models import QuizAttempt, Quiz
@@ -113,10 +114,15 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             courses = user.courses_taught.all()
             context['courses_taught'] = courses
             
-            # Get total number of students
-            total_students = 0
-            for course in courses:
-                total_students += course.students.count()
+            # Get total number of unique students across all courses (using distinct)
+            User = get_user_model()
+            
+            # Get students enrolled in any of the teacher's courses
+            total_students = User.objects.filter(
+                enrollments__course__in=courses,
+                user_type='student'
+            ).distinct().count()
+            
             context['total_students'] = total_students
             
             # Get number of published quizzes
