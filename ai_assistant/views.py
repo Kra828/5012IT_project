@@ -5,7 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 import json
 import openai
 from django.conf import settings
-from .models import UserQuery
+from .models import UserQuery, OpenAISettings
 
 # Create your views here.
 
@@ -23,10 +23,16 @@ class AIQueryAPIView(View):
             if not user_query:
                 return JsonResponse({'error': 'Please provide query content'}, status=400)
             
-            # Check if API key exists
-            api_key = settings.OPENAI_API_KEY
+            # First try to get API key from database
+            api_key = OpenAISettings.get_active_key()
+            
+            # If not found in database, try to get from settings
             if not api_key:
-                print("Error: OpenAI API key not set")
+                api_key = settings.OPENAI_API_KEY
+            
+            # Check if API key exists
+            if not api_key:
+                print("Error: OpenAI API key not set in database or settings")
                 return JsonResponse({'error': 'OpenAI API key is not configured, please contact administrator'}, status=500)
             
             try:
