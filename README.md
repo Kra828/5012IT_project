@@ -27,7 +27,7 @@ An advanced online learning platform built with Django, designed to facilitate t
 1. Clone the repository:
    ```
    git clone https://github.com/Kra828/5012IT_project.git
-   cd o5012IT_project
+   cd 5012IT_project
    ```
 
 2. Create and activate a virtual environment:
