@@ -6,13 +6,7 @@ from allauth.account.forms import SignupForm
 User = get_user_model()
 
 class CustomSignupForm(SignupForm):
-    """Custom signup form with user type selection"""
-    user_type = forms.ChoiceField(
-        choices=User.USER_TYPE_CHOICES,
-        widget=forms.RadioSelect,
-        label=_('I am a'),
-        initial='student'
-    )
+    """Custom signup form with default user type as student"""
     
     def clean_email(self):
         """Validate email uniqueness"""
@@ -22,9 +16,9 @@ class CustomSignupForm(SignupForm):
         return email
     
     def save(self, request):
-        # Save user type
+        # Set user type to student by default
         user = super().save(request)
-        user.user_type = self.cleaned_data['user_type']
+        user.user_type = 'student'  # Always set to student
         user.save()
         return user
 
