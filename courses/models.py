@@ -5,7 +5,7 @@ from django.conf import settings
 from ckeditor.fields import RichTextField
 
 class Course(models.Model):
-    """课程模型"""
+    """Course model"""
     title = models.CharField(max_length=200, verbose_name=_('Title'))
     slug = models.SlugField(max_length=200, unique=True, verbose_name=_('Slug'))
     instructor = models.ForeignKey(
@@ -28,6 +28,7 @@ class Course(models.Model):
         settings.AUTH_USER_MODEL,
         through='Enrollment',
         related_name='courses_enrolled',
+        blank=True,
         verbose_name=_('Students')
     )
     
@@ -37,67 +38,69 @@ class Course(models.Model):
         ordering = ['-created_at']
     
     def save(self, *args, **kwargs):
+        """Generate unique slug when saving a new course"""
         if not self.slug:
-            base_slug = slugify(self.title)
-            if not base_slug:  # 如果标题无法生成有效的slug
-                base_slug = f"course-{self.pk or 'new'}"
+            self.slug = slugify(self.title)
+            original_slug = self.slug
+            queryset = Course.objects.all()
+            if self.pk:
+                queryset = queryset.exclude(pk=self.pk)
             
-            # 确保slug唯一
-            slug = base_slug
-            counter = 1
-            
-            # 检查是否已存在相同的slug
-            while Course.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            
-            self.slug = slug
+            # Ensure unique slug
+            i = 1
+            while queryset.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}-{i}"
+                i += 1
         
-        # 保存课程
+        # Create forum board if needed
+        from forum.models import DiscussionBoard
         super().save(*args, **kwargs)
         
-        # 为课程创建讨论板（如果不存在）
-        from forum.models import DiscussionBoard
+        # Create discussion board for this course if it doesn't exist
         if not hasattr(self, 'discussion_board'):
-            DiscussionBoard.objects.create(
-                course=self,
-                description=f"讨论区：{self.title}"
+            board = DiscussionBoard.objects.create(
+                title=f"Discussion: {self.title}",
+                description=f"Discussion board for {self.title} course",
+                course=self
             )
     
     def __str__(self):
         return self.title
     
     def get_absolute_url(self):
-        from django.urls import reverse
-        return reverse('courses:course_detail', args=[self.slug])
+        """Get URL for course detail view"""
+        return reverse('courses:course_detail', kwargs={'slug': self.slug})
     
     def delete(self, *args, **kwargs):
-        """重写删除方法，安全处理级联删除"""
+        """Delete course and related files"""
+        # Delete media files
+        if self.thumbnail:
+            if os.path.isfile(self.thumbnail.path):
+                os.remove(self.thumbnail.path)
+        
+        # Get all related lesson videos
+        lessons = Lesson.objects.filter(chapter__course=self)
+        for lesson in lessons:
+            if lesson.video and os.path.isfile(lesson.video.path):
+                os.remove(lesson.video.path)
+        
+        # Get all related course files
+        course_files = self.files.all()
+        for file in course_files:
+            if file.file and os.path.isfile(file.file.path):
+                os.remove(file.file.path)
+        
+        # Delete discussion board
         try:
-            # 直接删除关联的讨论板
             if hasattr(self, 'discussion_board'):
                 self.discussion_board.delete()
-            
-            # 删除课程相关的测验
-            for quiz in self.quizzes.all():
-                try:
-                    quiz.delete()
-                except Exception:
-                    pass
-                    
-            # 调用父类的删除方法
-            super().delete(*args, **kwargs)
-        except Exception as e:
-            # 记录错误并继续
-            from django.db import connection
-            connection.set_rollback(True)
-            # 强制删除课程
-            from django.db import connection
-            with connection.cursor() as cursor:
-                cursor.execute(f"DELETE FROM courses_course WHERE id = {self.id}")
+        except:
+            pass
+        
+        super().delete(*args, **kwargs)
 
 class Chapter(models.Model):
-    """课程章节模型"""
+    """Course chapter model"""
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
@@ -117,7 +120,7 @@ class Chapter(models.Model):
         return f"{self.course.title} - {self.title}"
 
 class Lesson(models.Model):
-    """课程视频课程模型"""
+    """Course video lesson model"""
     chapter = models.ForeignKey(
         Chapter,
         on_delete=models.CASCADE,
@@ -139,10 +142,10 @@ class Lesson(models.Model):
         ordering = ['order']
     
     def __str__(self):
-        return self.title
+        return f"{self.chapter.title} - {self.title}"
 
 class Enrollment(models.Model):
-    """学生课程注册模型"""
+    """Student course enrollment model"""
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -167,7 +170,7 @@ class Enrollment(models.Model):
         return f"{self.student.username} enrolled in {self.course.title}"
 
 class LessonProgress(models.Model):
-    """学生视频观看进度模型"""
+    """Student video watching progress model"""
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -197,7 +200,7 @@ class LessonProgress(models.Model):
         return f"{self.student.username}'s progress on {self.lesson.title}"
 
 class CourseFile(models.Model):
-    """课程文件模型，用于教师上传文件供学生下载"""
+    """Course file model for teachers to upload files for students to download"""
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
@@ -225,6 +228,6 @@ class CourseFile(models.Model):
         return self.title
     
     def increment_download_count(self):
-        """增加下载计数"""
+        """Increment download count"""
         self.download_count += 1
         self.save()

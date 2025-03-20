@@ -403,7 +403,7 @@ class CourseFileDownloadView(LoginRequiredMixin, View):
         return response
 
 class CourseFileUploadView(LoginRequiredMixin, CreateView):
-    """教师上传课程文件的视图"""
+    """View for teachers to upload course files"""
     model = CourseFile
     template_name = 'courses/course_file_form.html'
     fields = ['title', 'description', 'file']
@@ -413,15 +413,15 @@ class CourseFileUploadView(LoginRequiredMixin, CreateView):
     
     def form_valid(self, form):
         course = Course.objects.get(slug=self.kwargs['course_slug'])
-        # 确保只有教师或管理员可以上传文件
+        # Ensure only teachers or admins can upload files
         if not (self.request.user.is_staff or self.request.user == course.instructor or self.request.user.is_teacher()):
             return self.handle_no_permission()
             
-        # 添加调试信息
-        print(f"上传文件 - 用户: {self.request.user.username}")
-        print(f"上传文件 - 是否是教师: {self.request.user.is_teacher()}")
-        print(f"上传文件 - 是否是课程教师: {self.request.user == course.instructor}")
-        print(f"上传文件 - 是否是管理员: {self.request.user.is_staff}")
+        # Add debug information
+        print(f"Upload file - User: {self.request.user.username}")
+        print(f"Upload file - Is teacher: {self.request.user.is_teacher()}")
+        print(f"Upload file - Is course instructor: {self.request.user == course.instructor}")
+        print(f"Upload file - Is admin: {self.request.user.is_staff}")
         
         form.instance.course = course
         form.instance.uploaded_by = self.request.user
